@@ -117,17 +117,24 @@ namespace EscapeRoom.Player
 
         private void HandleCursorToggleInput()
         {
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
-            {
-                SetCursorLock(false);
-            }
-
             var mouse = Mouse.current;
             if (mouse != null && mouse.leftButton.wasPressedThisFrame && !isCursorLocked)
             {
-                SetCursorLock(true);
+                if (CanLockCursor())
+                {
+                    SetCursorLock(true);
+                }
             }
+        }
+
+        private bool CanLockCursor()
+        {
+            if (EscapeRoom.UI.KeypadUI.Instance != null && EscapeRoom.UI.KeypadUI.Instance.IsOpen) return false;
+            if (EscapeRoom.Interaction.ClueInteractable.IsAnyClueOpen) return false;
+            if (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) return false;
+            if (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped) return false;
+            if (EscapeRoom.UI.EscapeUI.Instance != null && EscapeRoom.UI.EscapeUI.Instance.IsOpen) return false;
+            return true;
         }
 
         public void SetCursorLock(bool locked)

@@ -48,6 +48,13 @@ namespace EscapeRoom.Editor
             GameObject existingPlayer = GameObject.Find(PlayerGameObjectName);
             if (existingPlayer != null && !forceRebuild)
             {
+                if (existingPlayer.GetComponent<InventorySystem>() == null)
+                {
+                    existingPlayer.AddComponent<InventorySystem>();
+                    EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+                    Debug.Log("[PlayerBuilder] Attached missing InventorySystem to existing Player.");
+                }
+
                 Debug.LogWarning($"<color=#f0ad4e><b>[PlayerBuilder]</b></color> '{PlayerGameObjectName}' already exists in the active scene at {existingPlayer.transform.position}. Selecting existing Player to avoid duplicate creation.");
                 Selection.activeGameObject = existingPlayer;
                 EditorGUIUtility.PingObject(existingPlayer);
@@ -107,10 +114,14 @@ namespace EscapeRoom.Editor
             isys.PlayerCamera = cam;
             isys.InteractionRange = 3.0f;
 
-            // 8. Disable any standalone Scene cameras to avoid rendering conflicts and duplicate AudioListeners
+            // 8. Configure InventorySystem on Player
+            InventorySystem inv = playerGo.AddComponent<InventorySystem>();
+            inv.AllowDuplicates = false;
+
+            // 9. Disable any standalone Scene cameras to avoid rendering conflicts and duplicate AudioListeners
             DisableStandaloneSceneCameras(camGo);
 
-            // 9. Register undo, mark scene dirty, and highlight new Player
+            // 10. Register undo, mark scene dirty, and highlight new Player
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Selection.activeGameObject = playerGo;
             EditorGUIUtility.PingObject(playerGo);

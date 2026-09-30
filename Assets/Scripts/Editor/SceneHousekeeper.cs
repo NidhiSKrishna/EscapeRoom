@@ -3,12 +3,14 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
+using EscapeRoom.Interaction;
 
 namespace EscapeRoom.Editor
 {
     /// <summary>
     /// Handles scene housekeeping, scene transitions, and build settings registration for EscapeRoom_Main.
     /// Preserves existing generated ProBuilder environment and sets EscapeRoom_Main as primary gameplay scene.
+    /// Milestone: complete escape flow and gameplay state
     /// </summary>
     [InitializeOnLoad]
     public static class SceneHousekeeper
@@ -94,10 +96,27 @@ namespace EscapeRoom.Editor
                     sceneModified = true;
                 }
 
-                if (GameObject.Find("TestInteractable") == null)
+                // Remove deprecated TestInteractable from scene
+                var testInteractable = GameObject.Find("TestInteractable");
+                if (testInteractable != null)
                 {
-                    Debug.Log("[SceneHousekeeper] TestInteractable missing in EscapeRoom_Main. Building prototype interactable...");
-                    PlayerBuilder.BuildTestInteractable();
+                    Object.DestroyImmediate(testInteractable);
+                    sceneModified = true;
+                    Debug.Log("[SceneHousekeeper] Removed deprecated TestInteractable from scene.");
+                }
+
+                var playerGo = GameObject.Find("Player");
+                if (playerGo != null && playerGo.GetComponent<InventorySystem>() == null)
+                {
+                    playerGo.AddComponent<InventorySystem>();
+                    sceneModified = true;
+                    Debug.Log("[SceneHousekeeper] Added InventorySystem to Player.");
+                }
+
+                if (GameObject.Find("Key_Room") == null || GameObject.Find("Terminal_Keypad") == null || GameObject.Find("Exit_Door") == null || GameObject.Find("Escape_Trigger") == null || GameObject.Find("GameManagers") == null)
+                {
+                    Debug.Log("[SceneHousekeeper] Puzzle or game-flow elements missing in EscapeRoom_Main. Building prototype puzzle...");
+                    PuzzleBuilder.BuildPrototypePuzzleMenu();
                     sceneModified = true;
                 }
 
@@ -105,6 +124,9 @@ namespace EscapeRoom.Editor
                 {
                     EditorSceneManager.SaveScene(activeScene);
                 }
+
+                // Run verification to log validation status
+                EscapeRoomVerification.RunAllChecks();
             }
         }
 

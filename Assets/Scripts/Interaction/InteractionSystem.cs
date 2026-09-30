@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using EscapeRoom.UI;
 
 namespace EscapeRoom.Interaction
 {
@@ -87,8 +88,17 @@ namespace EscapeRoom.Interaction
             if (hitSomething && currentHitInfo.collider != null)
             {
                 hitGo = currentHitInfo.collider.gameObject;
-                foundInteractable = currentHitInfo.collider.GetComponent<IInteractable>()
-                                    ?? currentHitInfo.collider.GetComponentInParent<IInteractable>();
+
+                // Cache optimization: preserve current interactable if targeting the same object to prevent flicker
+                if (hitGo == currentHitObject && currentInteractable != null)
+                {
+                    foundInteractable = currentInteractable;
+                }
+                else
+                {
+                    foundInteractable = currentHitInfo.collider.GetComponent<IInteractable>()
+                                        ?? currentHitInfo.collider.GetComponentInParent<IInteractable>();
+                }
             }
 
             // Update focused interactable state
@@ -110,6 +120,8 @@ namespace EscapeRoom.Interaction
 
         private void HandleInteractionInput()
         {
+            if (ShouldSuppressInteraction()) return;
+
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.eKey.wasPressedThisFrame)
             {
@@ -118,10 +130,24 @@ namespace EscapeRoom.Interaction
         }
 
         /// <summary>
+        /// Determines whether interaction detection and prompts should be suppressed (e.g. during modals, pause, or win screen).
+        /// </summary>
+        public bool ShouldSuppressInteraction()
+        {
+            if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return true;
+            if (ClueInteractable.IsAnyClueOpen) return true;
+            if (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) return true;
+            if (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped) return true;
+            return false;
+        }
+
+        /// <summary>
         /// Attempts interaction with the currently targeted object.
         /// </summary>
         public void TriggerInteract()
         {
+            if (ShouldSuppressInteraction()) return;
+
             if (currentInteractable != null && currentInteractable.CanInteract)
             {
                 currentInteractable.Interact();
@@ -131,6 +157,7 @@ namespace EscapeRoom.Interaction
         private void OnGUI()
         {
             if (!showScreenPrompt || Event.current.type != EventType.Repaint) return;
+            if (ShouldSuppressInteraction()) return;
 
             // Draw subtle center crosshair dot
             DrawCrosshairDot();
