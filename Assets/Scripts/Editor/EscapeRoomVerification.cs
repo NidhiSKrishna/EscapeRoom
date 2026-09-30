@@ -611,7 +611,37 @@ namespace EscapeRoom.Editor
                 Debug.LogError("<color=#d9534f>[FAIL]</color> Escape Trigger missing for placement check.");
             }
 
+            // 27. Visual Pass Hierarchy and Architecture Check
+            totalCount++;
+            GameObject vdObj = GameObject.Find("VisualDetails");
+            if (vdObj != null && vdObj.transform.parent != null && vdObj.transform.parent.name == "Environment")
+            {
+                Transform trim = vdObj.transform.Find("ArchitecturalTrim");
+                Transform fixture = vdObj.transform.Find("CeilingFixture");
+                Transform furn = vdObj.transform.Find("FurnitureDetails");
+                Transform clutter = vdObj.transform.Find("ShelfDecorations");
+                Transform props = vdObj.transform.Find("ExtraProps");
+                Transform lighting = vdObj.transform.Find("Lighting");
+
+                bool allSubContainersExist = trim != null && fixture != null && furn != null && clutter != null && props != null && lighting != null;
+                if (allSubContainersExist)
+                {
+                    Debug.Log("<color=#5cb85c>[PASS]</color> VisualDetails hierarchy verified: ArchitecturalTrim, CeilingFixture, FurnitureDetails, ShelfDecorations, ExtraProps, and Lighting are all present under Environment/VisualDetails.");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogWarning($"<color=#f0ad4e>[WARN]</color> VisualDetails container present but some sub-containers missing: Trim:{(trim != null)}, Fixture:{(fixture != null)}, Furn:{(furn != null)}, Clutter:{(clutter != null)}, Props:{(props != null)}, Lighting:{(lighting != null)}.");
+                    passCount++;
+                }
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> VisualDetails container missing or not under Environment. Run Tools > Escape Room > Build Visual Pass.");
+            }
+
             Debug.Log($"<b><color=#337ab7>[EscapeRoomVerification]</color> Validation Complete: {passCount} of {totalCount} checks passed!</b>");
         }
     }
 }
+
