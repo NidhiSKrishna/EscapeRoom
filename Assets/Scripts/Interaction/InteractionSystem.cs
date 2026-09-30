@@ -33,6 +33,10 @@ namespace EscapeRoom.Interaction
         [Tooltip("Default prompt text if an interactable has an empty prompt string.")]
         [SerializeField] private string defaultPromptText = "Press E to interact";
 
+        [Header("Debugging")]
+        [Tooltip("Log interaction raycasting, detection target changes, and E key presses to console.")]
+        [SerializeField] private bool showInteractionDebug = false;
+
         private IInteractable currentInteractable;
         private GameObject currentHitObject;
         private RaycastHit currentHitInfo;
@@ -50,6 +54,12 @@ namespace EscapeRoom.Interaction
         {
             get => interactionRange;
             set => interactionRange = Mathf.Max(0.1f, value);
+        }
+
+        public bool ShowInteractionDebug
+        {
+            get => showInteractionDebug;
+            set => showInteractionDebug = value;
         }
 
         public IInteractable CurrentInteractable => currentInteractable;
@@ -80,32 +90,63 @@ namespace EscapeRoom.Interaction
 
             // Cast ray straight through the center of the player camera viewport
             Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            bool hitSomething = Physics.Raycast(ray, out currentHitInfo, interactionRange, interactionLayers, triggerInteraction);
+            RaycastHit[] hits = Physics.RaycastAll(ray, interactionRange, interactionLayers, triggerInteraction);
 
             IInteractable foundInteractable = null;
             GameObject hitGo = null;
+            RaycastHit selectedHit = default;
 
-            if (hitSomething && currentHitInfo.collider != null)
+            if (hits != null && hits.Length > 0)
             {
-                hitGo = currentHitInfo.collider.gameObject;
+                // Sort hits by distance ascending
+                Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
-                // Cache optimization: preserve current interactable if targeting the same object to prevent flicker
-                if (hitGo == currentHitObject && currentInteractable != null)
+                Transform playerRoot = transform.root;
+                for (int i = 0; i < hits.Length; i++)
                 {
-                    foundInteractable = currentInteractable;
+                    RaycastHit hit = hits[i];
+                    Collider col = hit.collider;
+                    if (col == null) continue;
+
+                    // Skip the player's own CharacterController or colliders
+                    if (col.transform.root == playerRoot || col.gameObject == gameObject) continue;
+
+                    // Skip trigger colliders if triggerInteraction is Ignore
+                    if (triggerInteraction == QueryTriggerInteraction.Ignore && col.isTrigger) continue;
+
+                    // This is the first valid physical surface hit
+                    hitGo = col.gameObject;
+                    selectedHit = hit;
+
+                    // Search for IInteractable on collider, in parent, or in immediate children
+                    foundInteractable = col.GetComponent<IInteractable>()
+                                        ?? col.GetComponentInParent<IInteractable>()
+                                        ?? col.GetComponentInChildren<IInteractable>();
+
+                    break;
                 }
-                else
-                {
-                    foundInteractable = currentHitInfo.collider.GetComponent<IInteractable>()
-                                        ?? currentHitInfo.collider.GetComponentInParent<IInteractable>();
-                }
+            }
+
+            currentHitInfo = selectedHit;
+            currentHitObject = hitGo;
+
+            // Validate interactable state
+            if (foundInteractable != null && !foundInteractable.CanInteract)
+            {
+                foundInteractable = null;
             }
 
             // Update focused interactable state
             if (foundInteractable != currentInteractable)
             {
+                if (showInteractionDebug)
+                {
+                    string targetName = foundInteractable != null ? foundInteractable.GetType().Name : "None";
+                    string hitName = hitGo != null ? hitGo.name : "None";
+                    Debug.Log($"[InteractionSystem] Target changed -> {targetName} on '{hitName}' (Dist: {currentHitInfo.distance:F2}m)");
+                }
+
                 currentInteractable = foundInteractable;
-                currentHitObject = hitGo;
 
                 if (currentInteractable != null && currentInteractable.CanInteract)
                 {
@@ -120,12 +161,23 @@ namespace EscapeRoom.Interaction
 
         private void HandleInteractionInput()
         {
-            if (ShouldSuppressInteraction()) return;
-
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.eKey.wasPressedThisFrame)
+            bool ePressed = keyboard != null && keyboard.eKey.wasPressedThisFrame;
+
+            if (ePressed)
             {
-                TriggerInteract();
+                if (showInteractionDebug)
+                {
+                    string targetName = currentInteractable != null ? currentInteractable.GetType().Name : "None";
+                    bool canInteract = currentInteractable != null && currentInteractable.CanInteract;
+                    bool suppressed = ShouldSuppressInteraction();
+                    Debug.Log($"[InteractionSystem] 'E' pressed. Target: {targetName}, CanInteract: {canInteract}, Suppressed: {suppressed}");
+                }
+
+                if (!ShouldSuppressInteraction())
+                {
+                    TriggerInteract();
+                }
             }
         }
 
@@ -150,6 +202,10 @@ namespace EscapeRoom.Interaction
 
             if (currentInteractable != null && currentInteractable.CanInteract)
             {
+                if (showInteractionDebug)
+                {
+                    Debug.Log($"[InteractionSystem] Calling Interact() on {currentInteractable.GetType().Name} ({currentHitObject?.name})");
+                }
                 currentInteractable.Interact();
             }
         }

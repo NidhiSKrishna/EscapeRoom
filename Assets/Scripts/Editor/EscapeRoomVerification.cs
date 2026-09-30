@@ -175,7 +175,7 @@ namespace EscapeRoom.Editor
 
             // 8. At Least One IInteractable Exists in Scene
             totalCount++;
-            var allInteractables = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
+            var allInteractables = Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .OfType<IInteractable>()
                 .ToArray();
 
@@ -255,7 +255,7 @@ namespace EscapeRoom.Editor
 
             // 12. Clue Document Existence and Configuration Check
             totalCount++;
-            ClueInteractable[] clues = Object.FindObjectsByType<ClueInteractable>(FindObjectsSortMode.None);
+            ClueInteractable[] clues = Object.FindObjectsByType<ClueInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (clues.Length == 1)
             {
                 ClueInteractable clue = clues[0];
@@ -441,6 +441,174 @@ namespace EscapeRoom.Editor
             else
             {
                 Debug.LogError($"<color=#d9534f>[FAIL]</color> Duplicate AudioListeners detected! Found {listeners.Length} active listeners.");
+            }
+
+            // 21. Key_Room Geometry Placement Check (Shelf Clearance)
+            totalCount++;
+            GameObject keyObj = GameObject.Find(PuzzleBuilder.KeyName);
+            GameObject shelfTier = GameObject.Find("Shelf_Tier_2");
+            if (keyObj != null && shelfTier != null)
+            {
+                var shelfCol = shelfTier.GetComponent<Collider>();
+                var keyCol = keyObj.GetComponent<Collider>();
+                var keyRen = keyObj.GetComponent<MeshRenderer>();
+                float shelfTopY = shelfCol != null ? shelfCol.bounds.max.y : 0.85f;
+                float keyBottomY = keyRen != null ? keyRen.bounds.min.y : (keyCol != null ? keyCol.bounds.min.y : (keyObj.transform.position.y - 0.02f));
+                float clearance = keyBottomY - shelfTopY;
+
+                // Reasonable clearance is within -0.02m to 0.04m
+                if (clearance >= -0.02f && clearance <= 0.04f)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Key_Room resting flush on shelf: Shelf Top Y: {shelfTopY:F3}m, Key Bottom Y: {keyBottomY:F3}m (Clearance: {clearance * 1000f:F1}mm).");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Key_Room placement issue: Key bottom Y {keyBottomY:F3}m vs Shelf top Y {shelfTopY:F3}m (Clearance: {clearance:F3}m). Key appears floating or misplaced!");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Cannot verify Key_Room shelf placement: Key or Shelf_Tier_2 missing.");
+                passCount++;
+            }
+
+            // 22. Container_Lockbox Geometry Placement Check (Table Top Alignment)
+            totalCount++;
+            GameObject lockboxObj = GameObject.Find(PuzzleBuilder.ContainerName);
+            GameObject tableTopObj = GameObject.Find("Table_Top");
+            if (lockboxObj != null && tableTopObj != null)
+            {
+                var tableCol = tableTopObj.GetComponent<Collider>();
+                float tableTopY = tableCol != null ? tableCol.bounds.max.y : 0.85f;
+                float lockboxY = lockboxObj.transform.position.y;
+                float diff = Mathf.Abs(lockboxY - tableTopY);
+
+                if (diff <= 0.04f)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Container_Lockbox resting flush on table: Table Top Y: {tableTopY:F3}m, Box Root Y: {lockboxY:F3}m (Offset: {diff * 1000f:F1}mm).");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Container_Lockbox misaligned with table! Table Top Y {tableTopY:F3}m vs Box Root Y {lockboxY:F3}m (Diff: {diff:F3}m).");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Cannot verify Container_Lockbox table placement: Lockbox or Table_Top missing.");
+                passCount++;
+            }
+
+            // 23. Keypad Wall Mount Check
+            totalCount++;
+            GameObject keypadObj = GameObject.Find(PuzzleBuilder.KeypadName);
+            if (keypadObj != null)
+            {
+                float keypadZ = keypadObj.transform.position.z;
+                // Front wall inner face is at Z = 6.00m; keypad should be mounted near Z = 5.85m to 6.05m
+                if (keypadZ >= 5.85f && keypadZ <= 6.05f)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Keypad terminal mounted flush on front wall surface (Z: {keypadZ:F2}m).");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Keypad terminal misaligned with wall! Z: {keypadZ:F2}m, expected in front of wall at ~5.96m.");
+                }
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> Keypad missing for placement check.");
+            }
+
+            // 24. Clue_Document Inside Lockbox Check
+            totalCount++;
+            GameObject clueObj = null;
+            if (lockboxObj != null)
+            {
+                var containerComp = lockboxObj.GetComponent<LockedContainer>();
+                if (containerComp != null && containerComp.ContentsObject != null)
+                {
+                    clueObj = containerComp.ContentsObject;
+                }
+                else
+                {
+                    var clueChild = lockboxObj.transform.Find(PuzzleBuilder.ClueName);
+                    if (clueChild != null) clueObj = clueChild.gameObject;
+                }
+            }
+            if (clueObj == null)
+            {
+                var foundClues = Object.FindObjectsByType<ClueInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                if (foundClues.Length > 0) clueObj = foundClues[0].gameObject;
+            }
+
+            if (clueObj != null && lockboxObj != null)
+            {
+                float dist = Vector2.Distance(
+                    new Vector2(clueObj.transform.position.x, clueObj.transform.position.z),
+                    new Vector2(lockboxObj.transform.position.x, lockboxObj.transform.position.z));
+                float clueY = clueObj.transform.position.y;
+                float boxY = lockboxObj.transform.position.y;
+
+                if (dist < 0.25f && clueY >= boxY - 0.05f && clueY <= boxY + 0.25f)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Clue_Document correctly housed inside Container_Lockbox (Horizontal offset: {dist:F3}m, Y: {clueY:F2}m).");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Clue_Document floating outside Container_Lockbox! Dist: {dist:F3}m, Clue Y: {clueY:F2}m, Box Y: {boxY:F2}m.");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Cannot verify Clue inside Lockbox: Clue or Lockbox missing.");
+                passCount++;
+            }
+
+            // 25. Exit Door Doorway Alignment Check
+            totalCount++;
+            GameObject doorObj = GameObject.Find(PuzzleBuilder.ExitDoorName);
+            if (doorObj != null)
+            {
+                float doorZ = doorObj.transform.position.z;
+                float doorX = doorObj.transform.position.x;
+                if (Mathf.Abs(doorZ - 6.00f) < 0.15f && doorX >= -1.0f && doorX <= 0.2f)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Exit Door correctly positioned at doorway threshold: ({doorX:F2}m, {doorObj.transform.position.y:F2}m, {doorZ:F2}m).");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Exit Door misaligned with doorway opening! Position: {doorObj.transform.position}.");
+                }
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> Exit Door missing for alignment check.");
+            }
+
+            // 26. Escape Trigger Beyond Door Check
+            totalCount++;
+            GameObject trigObj = GameObject.Find(PuzzleBuilder.EscapeTriggerName);
+            if (trigObj != null)
+            {
+                float trigZ = trigObj.transform.position.z;
+                if (trigZ > 6.05f)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Escape Trigger placed beyond doorway threshold: Z = {trigZ:F2}m (> 6.05m).");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Escape Trigger is not beyond doorway! Z = {trigZ:F2}m.");
+                }
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> Escape Trigger missing for placement check.");
             }
 
             Debug.Log($"<b><color=#337ab7>[EscapeRoomVerification]</color> Validation Complete: {passCount} of {totalCount} checks passed!</b>");

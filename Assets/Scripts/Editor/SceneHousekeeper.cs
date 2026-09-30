@@ -113,12 +113,10 @@ namespace EscapeRoom.Editor
                     Debug.Log("[SceneHousekeeper] Added InventorySystem to Player.");
                 }
 
-                if (GameObject.Find("Key_Room") == null || GameObject.Find("Terminal_Keypad") == null || GameObject.Find("Exit_Door") == null || GameObject.Find("Escape_Trigger") == null || GameObject.Find("GameManagers") == null)
-                {
-                    Debug.Log("[SceneHousekeeper] Puzzle or game-flow elements missing in EscapeRoom_Main. Building prototype puzzle...");
-                    PuzzleBuilder.BuildPrototypePuzzleMenu();
-                    sceneModified = true;
-                }
+                // Rebuild puzzle geometry to ensure geometry-aware surface alignment and clean single instances
+                Debug.Log("[SceneHousekeeper] Rebuilding prototype puzzle with geometry-aware alignment...");
+                PuzzleBuilder.BuildPuzzle(forceRebuild: true);
+                sceneModified = true;
 
                 if (sceneModified)
                 {
