@@ -640,6 +640,176 @@ namespace EscapeRoom.Editor
                 Debug.LogError("<color=#d9534f>[FAIL]</color> VisualDetails container missing or not under Environment. Run Tools > Escape Room > Build Visual Pass.");
             }
 
+            // 28. Almirah (Cabinet) Unified Hierarchy Check
+            totalCount++;
+            GameObject cabinetObj = GameObject.Find("Cabinet");
+            if (cabinetObj != null)
+            {
+                Transform plinth = cabinetObj.transform.Find("Cabinet_Plinth");
+                Transform body = cabinetObj.transform.Find("Cabinet_Body");
+                Transform crown = cabinetObj.transform.Find("Cabinet_Crown");
+                Transform leftHinge = cabinetObj.transform.Find("Door_Left_Hinge");
+                Transform rightHinge = cabinetObj.transform.Find("Door_Right_Hinge");
+
+                Transform leftDoor = leftHinge != null ? leftHinge.Find("Cabinet_Door_Left") : null;
+                Transform rightDoor = rightHinge != null ? rightHinge.Find("Cabinet_Door_Right") : null;
+                Transform leftHandle = leftDoor != null ? leftDoor.Find("Cabinet_Handle_Left") : null;
+                Transform rightHandle = rightDoor != null ? rightDoor.Find("Cabinet_Handle_Right") : null;
+
+                bool structureValid = plinth != null && body != null && crown != null &&
+                                      leftHinge != null && rightHinge != null &&
+                                      leftDoor != null && rightDoor != null &&
+                                      leftHandle != null && rightHandle != null;
+
+                // Check for rogue floating doors anywhere else (e.g. under FurnitureDetails)
+                var allDoors = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                    .Where(go => go.name == "Cabinet_Door_Left" || go.name == "Cabinet_Door_Right")
+                    .ToArray();
+                bool noDetachedDoors = allDoors.All(d => d.transform.IsChildOf(cabinetObj.transform));
+
+                if (!structureValid || !noDetachedDoors || allDoors.Length != 2)
+                {
+                    Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Almirah hierarchy incomplete or has detached objects. Running auto-rebuild...");
+                    // Clean up rogue detached doors/handles
+                    foreach (var d in allDoors)
+                    {
+                        if (cabinetObj == null || !d.transform.IsChildOf(cabinetObj.transform))
+                        {
+                            Undo.DestroyObjectImmediate(d);
+                        }
+                    }
+                    var rogueHandles = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                        .Where(go => (go.name == "Cabinet_Handle_Left" || go.name == "Cabinet_Handle_Right") &&
+                                     (cabinetObj == null || !go.transform.IsChildOf(cabinetObj.transform)))
+                        .ToArray();
+                    foreach (var h in rogueHandles)
+                    {
+                        Undo.DestroyObjectImmediate(h);
+                    }
+
+                    EscapeRoomBuilder.RebuildCabinetMenu();
+                    cabinetObj = GameObject.Find("Cabinet");
+                    plinth = cabinetObj != null ? cabinetObj.transform.Find("Cabinet_Plinth") : null;
+                    body = cabinetObj != null ? cabinetObj.transform.Find("Cabinet_Body") : null;
+                    crown = cabinetObj != null ? cabinetObj.transform.Find("Cabinet_Crown") : null;
+                    leftHinge = cabinetObj != null ? cabinetObj.transform.Find("Door_Left_Hinge") : null;
+                    rightHinge = cabinetObj != null ? cabinetObj.transform.Find("Door_Right_Hinge") : null;
+                    leftDoor = leftHinge != null ? leftHinge.Find("Cabinet_Door_Left") : null;
+                    rightDoor = rightHinge != null ? rightHinge.Find("Cabinet_Door_Right") : null;
+                    leftHandle = leftDoor != null ? leftDoor.Find("Cabinet_Handle_Left") : null;
+                    rightHandle = rightDoor != null ? rightDoor.Find("Cabinet_Handle_Right") : null;
+
+                    allDoors = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                        .Where(go => go.name == "Cabinet_Door_Left" || go.name == "Cabinet_Door_Right")
+                        .ToArray();
+                    noDetachedDoors = cabinetObj != null && allDoors.All(d => d.transform.IsChildOf(cabinetObj.transform));
+                    structureValid = plinth != null && body != null && crown != null &&
+                                     leftHinge != null && rightHinge != null &&
+                                     leftDoor != null && rightDoor != null &&
+                                     leftHandle != null && rightHandle != null;
+                }
+
+                if (structureValid && noDetachedDoors && allDoors.Length == 2)
+                {
+                    Debug.Log("<color=#5cb85c>[PASS]</color> Almirah (Cabinet) unified hierarchy fully verified: Plinth, Body, Crown, Hinges, Doors, and Handles correctly assembled under Cabinet parent with no floating parts.");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Almirah hierarchy incomplete or has detached objects! StructureValid: {structureValid}, NoDetached: {noDetachedDoors}, TotalDoorCount: {allDoors.Length} (expected 2 under Cabinet).");
+                }
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> Cabinet object missing from scene.");
+            }
+
+            // 29. Hollow Lockbox Cavity & Clue Progression Check
+            totalCount++;
+            if (lockboxObj != null)
+            {
+                Transform baseRoot = lockboxObj.transform.Find("Lockbox_Base");
+                Transform floor = baseRoot != null ? baseRoot.Find("Lockbox_Floor") : null;
+                Transform wallL = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Left") : null;
+                Transform wallR = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Right") : null;
+                Transform wallF = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Front") : null;
+                Transform wallB = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Back") : null;
+                Transform lidHinge = lockboxObj.transform.Find("Lockbox_LidHinge");
+                Transform lidSlab = lidHinge != null ? lidHinge.Find("Lockbox_LidSlab") : null;
+
+                bool hollowGeometryValid = floor != null && wallL != null && wallR != null && wallF != null && wallB != null && lidSlab != null;
+
+                var lockedComp = lockboxObj.GetComponent<LockedContainer>();
+                bool lockedCompValid = lockedComp != null && lockedComp.RequiredItemId == PuzzleBuilder.DefaultKeyId;
+
+                GameObject clueChildObj = lockedComp != null && lockedComp.ContentsObject != null
+                    ? lockedComp.ContentsObject
+                    : (lockboxObj.transform.Find(PuzzleBuilder.ClueName) != null ? lockboxObj.transform.Find(PuzzleBuilder.ClueName).gameObject : null);
+
+                bool clueInsideCavity = false;
+                bool clueColliderValid = false;
+                if (clueChildObj != null)
+                {
+                    // Check local Y relative to Container_Lockbox: floor top is at 0.02m, cavity rim at 0.16m
+                    float clueLocalY = clueChildObj.transform.localPosition.y;
+                    clueInsideCavity = clueLocalY >= 0.015f && clueLocalY < 0.10f;
+                    var clueCol = clueChildObj.GetComponent<Collider>();
+                    clueColliderValid = clueCol != null && clueCol.enabled;
+                }
+
+                if (!hollowGeometryValid || !lockedCompValid || !clueInsideCavity || !clueColliderValid)
+                {
+                    Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Lockbox cavity or clue setup out of date. Running auto-rebuild...");
+                    PuzzleBuilder.RebuildLockboxAndClueMenu();
+                    lockboxObj = GameObject.Find(PuzzleBuilder.ContainerName);
+                    baseRoot = lockboxObj != null ? lockboxObj.transform.Find("Lockbox_Base") : null;
+                    floor = baseRoot != null ? baseRoot.Find("Lockbox_Floor") : null;
+                    wallL = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Left") : null;
+                    wallR = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Right") : null;
+                    wallF = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Front") : null;
+                    wallB = baseRoot != null ? baseRoot.Find("Lockbox_Wall_Back") : null;
+                    lidHinge = lockboxObj != null ? lockboxObj.transform.Find("Lockbox_LidHinge") : null;
+                    lidSlab = lidHinge != null ? lidHinge.Find("Lockbox_LidSlab") : null;
+                    hollowGeometryValid = floor != null && wallL != null && wallR != null && wallF != null && wallB != null && lidSlab != null;
+
+                    lockedComp = lockboxObj != null ? lockboxObj.GetComponent<LockedContainer>() : null;
+                    lockedCompValid = lockedComp != null && lockedComp.RequiredItemId == PuzzleBuilder.DefaultKeyId;
+
+                    clueChildObj = lockedComp != null && lockedComp.ContentsObject != null
+                        ? lockedComp.ContentsObject
+                        : (lockboxObj != null && lockboxObj.transform.Find(PuzzleBuilder.ClueName) != null ? lockboxObj.transform.Find(PuzzleBuilder.ClueName).gameObject : null);
+
+                    if (clueChildObj != null)
+                    {
+                        float clueLocalY = clueChildObj.transform.localPosition.y;
+                        clueInsideCavity = clueLocalY >= 0.015f && clueLocalY < 0.10f;
+                        var clueCol = clueChildObj.GetComponent<Collider>();
+                        clueColliderValid = clueCol != null && clueCol.enabled;
+                    }
+                }
+
+                if (hollowGeometryValid && lockedCompValid && clueInsideCavity && clueColliderValid)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Hollow Lockbox cavity & clue progression verified: 5-piece cavity, lid hinge, clue resting inside cavity at local Y={clueChildObj.transform.localPosition.y:F3}m with active collider.");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Lockbox cavity or clue setup invalid! HollowGeom: {hollowGeometryValid}, LockedComp: {lockedCompValid}, ClueInsideCavity: {clueInsideCavity}, ClueCol: {clueColliderValid}.");
+                }
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> Lockbox object missing for cavity check.");
+            }
+
+            // Save scene if any auto-fixes modified dirty state
+            var activeScn = EditorSceneManager.GetActiveScene();
+            if (activeScn.isDirty)
+            {
+                EditorSceneManager.SaveScene(activeScn);
+            }
+
             Debug.Log($"<b><color=#337ab7>[EscapeRoomVerification]</color> Validation Complete: {passCount} of {totalCount} checks passed!</b>");
         }
     }

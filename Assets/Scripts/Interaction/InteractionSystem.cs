@@ -114,15 +114,39 @@ namespace EscapeRoom.Interaction
                     // Skip trigger colliders if triggerInteraction is Ignore
                     if (triggerInteraction == QueryTriggerInteraction.Ignore && col.isTrigger) continue;
 
-                    // This is the first valid physical surface hit
+                    // Check for IInteractable directly on this collider
+                    IInteractable directInteractable = col.GetComponent<IInteractable>();
+                    if (directInteractable != null && directInteractable.CanInteract)
+                    {
+                        hitGo = col.gameObject;
+                        selectedHit = hit;
+                        foundInteractable = directInteractable;
+                        break;
+                    }
+
+                    // Check in parent or immediate children
+                    IInteractable hierarchyInteractable = col.GetComponentInParent<IInteractable>()
+                                                        ?? col.GetComponentInChildren<IInteractable>();
+
+                    if (hierarchyInteractable != null && hierarchyInteractable.CanInteract)
+                    {
+                        hitGo = col.gameObject;
+                        selectedHit = hit;
+                        foundInteractable = hierarchyInteractable;
+                        break;
+                    }
+
+                    // If this collider belongs to an opened container, don't let its frame block items inside
+                    var container = col.GetComponentInParent<LockedContainer>();
+                    if (container != null && container.IsOpen)
+                    {
+                        continue;
+                    }
+
+                    // This is the first valid physical blocking surface hit
                     hitGo = col.gameObject;
                     selectedHit = hit;
-
-                    // Search for IInteractable on collider, in parent, or in immediate children
-                    foundInteractable = col.GetComponent<IInteractable>()
-                                        ?? col.GetComponentInParent<IInteractable>()
-                                        ?? col.GetComponentInChildren<IInteractable>();
-
+                    foundInteractable = null;
                     break;
                 }
             }

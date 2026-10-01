@@ -47,6 +47,31 @@ namespace EscapeRoom.Editor
             }
         }
 
+        [MenuItem("Tools/Escape Room/Rebuild Cabinet (Almirah)", false, 23)]
+        public static void RebuildCabinetMenu()
+        {
+            GameObject env = GameObject.Find("Environment");
+            if (env == null)
+            {
+                Debug.LogWarning("[EscapeRoomBuilder] 'Environment' root not found.");
+                return;
+            }
+            Transform furn = env.transform.Find("Furniture");
+            if (furn == null)
+            {
+                furn = CreateSubContainer("Furniture", env.transform).transform;
+            }
+            Transform oldCab = furn.Find("Cabinet");
+            if (oldCab != null)
+            {
+                Undo.DestroyObjectImmediate(oldCab.gameObject);
+            }
+            Material woodMat = GetOrCreateMaterial("M_Proto_Wood", new Color(0.45f, 0.30f, 0.18f), 0.30f);
+            BuildCabinet(RoomConfiguration.CreatePrototypeDefault(), furn, woodMat);
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            Debug.Log("[EscapeRoomBuilder] Rebuilt Cabinet (Almirah) with unified hierarchy.");
+        }
+
         [MenuItem("Tools/Escape Room/Room Builder Window", false, 20)]
         public static void OpenBuilderWindow()
         {
@@ -348,16 +373,51 @@ namespace EscapeRoom.Editor
             CreateProBuilderCube("Cabinet_Plinth", cabinetRoot.transform, plinthPos, plinthSize, Quaternion.identity, mat);
 
             // Main body
-            float bodyH = cabH - plinthH - 0.06f;
+            float bodyH = cabH - plinthH - 0.06f; // 1.86m
             Vector3 bodySize = new Vector3(cabD, bodyH, cabW);
-            Vector3 bodyPos = new Vector3(0f, plinthH + bodyH * 0.5f, 0f);
+            Vector3 bodyPos = new Vector3(0f, plinthH + bodyH * 0.5f, 0f); // Y = 1.01m
             CreateProBuilderCube("Cabinet_Body", cabinetRoot.transform, bodyPos, bodySize, Quaternion.identity, mat);
 
             // Top crown / rim
             float crownH = 0.06f;
             Vector3 crownSize = new Vector3(cabD + 0.04f, crownH, cabW + 0.04f);
-            Vector3 crownPos = new Vector3(0f, cabH - crownH * 0.5f, 0f);
+            Vector3 crownPos = new Vector3(0f, cabH - crownH * 0.5f, 0f); // Y = 1.97m
             CreateProBuilderCube("Cabinet_Crown", cabinetRoot.transform, crownPos, crownSize, Quaternion.identity, mat);
+
+            // Metal material for door handles
+            Material metalMat = GetOrCreateMaterial("M_Proto_Metal", new Color(0.70f, 0.70f, 0.75f), 0.85f, 0.35f);
+
+            // Doors and hinges (assembled cleanly under cabinetRoot in local coordinates)
+            float doorThk = 0.025f;
+            float doorH = 1.80f;
+            float doorW = 0.50f;
+            float hingeX = -cabD * 0.5f - 0.005f; // -0.305m (facing -X into room)
+            float hingeZ = cabW * 0.5f - 0.04f;  // 0.51m
+
+            // Left Hinge & Door
+            GameObject leftHinge = new GameObject("Door_Left_Hinge");
+            leftHinge.transform.SetParent(cabinetRoot.transform, false);
+            leftHinge.transform.localPosition = new Vector3(hingeX, bodyPos.y, -hingeZ);
+            Undo.RegisterCreatedObjectUndo(leftHinge, "Create Door Left Hinge");
+
+            Vector3 leftDoorLocalPos = new Vector3(0f, 0f, doorW * 0.5f);
+            var leftDoor = CreateProBuilderCube("Cabinet_Door_Left", leftHinge.transform, leftDoorLocalPos, new Vector3(doorThk, doorH, doorW), Quaternion.identity, mat);
+
+            Vector3 handleSize = new Vector3(0.02f, 0.14f, 0.02f);
+            Vector3 leftHandleLocalPos = new Vector3(-doorThk * 0.5f - handleSize.x * 0.5f, 0f, doorW * 0.5f - 0.04f);
+            CreateProBuilderCube("Cabinet_Handle_Left", leftDoor.transform, leftHandleLocalPos, handleSize, Quaternion.identity, metalMat);
+
+            // Right Hinge & Door
+            GameObject rightHinge = new GameObject("Door_Right_Hinge");
+            rightHinge.transform.SetParent(cabinetRoot.transform, false);
+            rightHinge.transform.localPosition = new Vector3(hingeX, bodyPos.y, hingeZ);
+            Undo.RegisterCreatedObjectUndo(rightHinge, "Create Door Right Hinge");
+
+            Vector3 rightDoorLocalPos = new Vector3(0f, 0f, -doorW * 0.5f);
+            var rightDoor = CreateProBuilderCube("Cabinet_Door_Right", rightHinge.transform, rightDoorLocalPos, new Vector3(doorThk, doorH, doorW), Quaternion.identity, mat);
+
+            Vector3 rightHandleLocalPos = new Vector3(-doorThk * 0.5f - handleSize.x * 0.5f, 0f, -doorW * 0.5f + 0.04f);
+            CreateProBuilderCube("Cabinet_Handle_Right", rightDoor.transform, rightHandleLocalPos, handleSize, Quaternion.identity, metalMat);
         }
 
         #endregion

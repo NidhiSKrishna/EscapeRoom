@@ -276,12 +276,38 @@ namespace EscapeRoom.Editor
             return keyItem;
         }
 
+        [MenuItem("Tools/Escape Room/Rebuild Lockbox & Clue", false, 22)]
+        public static void RebuildLockboxAndClueMenu()
+        {
+            GameObject envGo = GameObject.Find("Environment");
+            if (envGo == null) return;
+            Transform propsTrans = envGo.transform.Find("Props");
+            Transform puzzleParent = propsTrans != null ? propsTrans.Find("Puzzle") : null;
+            if (puzzleParent == null) return;
+
+            Material boxMat = EscapeRoomBuilder.GetOrCreateMaterial("M_Proto_Lockbox", new Color(0.24f, 0.25f, 0.28f), 0.50f, 0.30f);
+            Material clueMat = EscapeRoomBuilder.GetOrCreateMaterial("M_Proto_Clue", new Color(0.93f, 0.89f, 0.78f), 0.05f, 0.10f);
+
+            ClueInteractable clue = BuildClue(puzzleParent, clueMat, forceRebuild: true);
+            LockedContainer container = BuildLockedContainer(puzzleParent, boxMat, clue, forceRebuild: true);
+
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            Debug.Log("[PuzzleBuilder] Rebuilt Hollow Lockbox and Clue successfully.");
+        }
+
         private static LockedContainer BuildLockedContainer(Transform parent, Material mat, ClueInteractable clue, bool forceRebuild)
         {
             GameObject existing = GameObject.Find(ContainerName);
             if (existing != null)
             {
-                if (!forceRebuild) return existing.GetComponent<LockedContainer>();
+                bool isHollow = existing.transform.Find("Lockbox_Base/Lockbox_Floor") != null;
+                if (!forceRebuild && isHollow) return existing.GetComponent<LockedContainer>();
+
+                // Detach clue before destroying old container to preserve reference
+                if (clue != null && clue.transform.IsChildOf(existing.transform))
+                {
+                    clue.transform.SetParent(parent, true);
+                }
                 Undo.DestroyObjectImmediate(existing);
             }
 
@@ -293,26 +319,60 @@ namespace EscapeRoom.Editor
             containerRoot.transform.position = rootPos;
             Undo.RegisterCreatedObjectUndo(containerRoot, "Create Locked Container");
 
-            // Box base: local position relative to containerRoot
-            Vector3 baseSize = new Vector3(0.44f, 0.20f, 0.32f);
-            Vector3 baseLocalPos = new Vector3(0f, baseSize.y * 0.5f, 0f);
-            var basePb = EscapeRoomBuilder.CreateProBuilderCube("Lockbox_Base", containerRoot.transform, baseLocalPos, baseSize, Quaternion.identity, mat);
+            // Box dimensions
+            float boxW = 0.44f;
+            float boxD = 0.32f;
+            float floorThk = 0.02f;
+            float wallThk = 0.02f;
+            float wallH = 0.14f;
+            float totalH = floorThk + wallH; // 0.16m
+
+            // Hollow base assembly: floor + 4 walls forming interior cavity
+            GameObject baseRoot = new GameObject("Lockbox_Base");
+            baseRoot.transform.SetParent(containerRoot.transform, false);
+            baseRoot.transform.localPosition = Vector3.zero;
+            Undo.RegisterCreatedObjectUndo(baseRoot, "Create Lockbox Base");
+
+            // 1. Floor slab
+            Vector3 floorSize = new Vector3(boxW, floorThk, boxD);
+            Vector3 floorPos = new Vector3(0f, floorThk * 0.5f, 0f);
+            EscapeRoomBuilder.CreateProBuilderCube("Lockbox_Floor", baseRoot.transform, floorPos, floorSize, Quaternion.identity, mat);
+
+            // 2. Left wall (-X)
+            float wallY = floorThk + wallH * 0.5f;
+            Vector3 sideWallSize = new Vector3(wallThk, wallH, boxD);
+            Vector3 leftWallPos = new Vector3(-boxW * 0.5f + wallThk * 0.5f, wallY, 0f);
+            EscapeRoomBuilder.CreateProBuilderCube("Lockbox_Wall_Left", baseRoot.transform, leftWallPos, sideWallSize, Quaternion.identity, mat);
+
+            // 3. Right wall (+X)
+            Vector3 rightWallPos = new Vector3(boxW * 0.5f - wallThk * 0.5f, wallY, 0f);
+            EscapeRoomBuilder.CreateProBuilderCube("Lockbox_Wall_Right", baseRoot.transform, rightWallPos, sideWallSize, Quaternion.identity, mat);
+
+            // 4. Front wall (-Z)
+            float fbWallW = boxW - 2f * wallThk;
+            Vector3 fbWallSize = new Vector3(fbWallW, wallH, wallThk);
+            Vector3 frontWallPos = new Vector3(0f, wallY, -boxD * 0.5f + wallThk * 0.5f);
+            EscapeRoomBuilder.CreateProBuilderCube("Lockbox_Wall_Front", baseRoot.transform, frontWallPos, fbWallSize, Quaternion.identity, mat);
+
+            // 5. Back wall (+Z)
+            Vector3 backWallPos = new Vector3(0f, wallY, boxD * 0.5f - wallThk * 0.5f);
+            EscapeRoomBuilder.CreateProBuilderCube("Lockbox_Wall_Back", baseRoot.transform, backWallPos, fbWallSize, Quaternion.identity, mat);
 
             // Lid hinge root (pivot at top-back edge of base): local position relative to containerRoot
-            Vector3 hingeLocalPos = new Vector3(0f, baseSize.y, baseSize.z * 0.5f);
+            Vector3 hingeLocalPos = new Vector3(0f, totalH, boxD * 0.5f);
             GameObject lidHinge = new GameObject("Lockbox_LidHinge");
             lidHinge.transform.SetParent(containerRoot.transform, false);
             lidHinge.transform.localPosition = hingeLocalPos;
 
             // Lid slab child (offset from hinge so it covers the base): local position relative to lidHinge
-            Vector3 lidSize = new Vector3(0.46f, 0.04f, 0.34f);
+            Vector3 lidSize = new Vector3(boxW + 0.02f, 0.03f, boxD + 0.02f);
             Vector3 lidLocalPos = new Vector3(0f, lidSize.y * 0.5f, -lidSize.z * 0.5f);
             var lidPb = EscapeRoomBuilder.CreateProBuilderCube("Lockbox_LidSlab", lidHinge.transform, lidLocalPos, lidSize, Quaternion.identity, mat);
 
             // Add LockedContainer to containerRoot
             BoxCollider rootCollider = containerRoot.AddComponent<BoxCollider>();
-            rootCollider.size = new Vector3(0.50f, 0.28f, 0.40f);
-            rootCollider.center = new Vector3(0f, 0.14f, 0f);
+            rootCollider.size = new Vector3(boxW + 0.06f, totalH + lidSize.y + 0.04f, boxD + 0.06f);
+            rootCollider.center = new Vector3(0f, (totalH + lidSize.y) * 0.5f, 0f);
 
             LockedContainer locked = containerRoot.AddComponent<LockedContainer>();
             locked.RequiredItemId = DefaultKeyId;
@@ -321,9 +381,9 @@ namespace EscapeRoom.Editor
 
             if (clue != null)
             {
-                // Parent clue inside containerRoot at base floor height
+                // Parent clue inside containerRoot resting clearly visible inside the hollow base floor
                 clue.transform.SetParent(containerRoot.transform, false);
-                clue.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+                clue.transform.localPosition = new Vector3(0f, floorThk + 0.008f, 0f); // Y = 0.028m
                 clue.transform.localRotation = Quaternion.identity;
                 clue.gameObject.SetActive(false); // Hidden until container is unlocked
             }
@@ -342,8 +402,8 @@ namespace EscapeRoom.Editor
 
             // Placed at table surface height inside the lockbox base
             float tableTopY = GetSurfaceTopY("Table_Top", 0.85f);
-            Vector3 cluePos = new Vector3(1.50f, tableTopY + 0.02f, -0.40f);
-            Vector3 clueSize = new Vector3(0.26f, 0.015f, 0.18f);
+            Vector3 cluePos = new Vector3(1.50f, tableTopY + 0.028f, -0.40f);
+            Vector3 clueSize = new Vector3(0.26f, 0.012f, 0.18f);
 
             var pb = EscapeRoomBuilder.CreateProBuilderCube(ClueName, parent, cluePos, clueSize, Quaternion.identity, mat);
             // Dynamic clue object: non-static so it can be activated on unlock
@@ -352,8 +412,8 @@ namespace EscapeRoom.Editor
             BoxCollider clueCol = pb.gameObject.GetComponent<BoxCollider>();
             if (clueCol != null)
             {
-                clueCol.size = new Vector3(0.26f, 0.06f, 0.18f);
-                clueCol.center = Vector3.zero;
+                clueCol.size = new Vector3(0.28f, 0.06f, 0.20f);
+                clueCol.center = new Vector3(0f, 0.02f, 0f);
             }
 
             ClueInteractable clue = pb.gameObject.AddComponent<ClueInteractable>();

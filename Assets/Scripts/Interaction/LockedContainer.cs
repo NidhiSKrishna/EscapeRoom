@@ -104,8 +104,22 @@ namespace EscapeRoom.Interaction
                 closedRotation = lidTransform.localRotation;
             }
 
-            // Initially ensure contents are hidden or disabled if desired
-            if (contentsObject != null && isLocked)
+            if (contentsObject == null)
+            {
+                var clueChild = GetComponentInChildren<ClueInteractable>(true);
+                if (clueChild != null)
+                {
+                    contentsObject = clueChild.gameObject;
+                }
+            }
+
+            if (isOpen)
+            {
+                Collider rootCol = GetComponent<Collider>();
+                if (rootCol != null) rootCol.enabled = false;
+                if (contentsObject != null) contentsObject.SetActive(true);
+            }
+            else if (contentsObject != null && isLocked)
             {
                 contentsObject.SetActive(false);
             }
@@ -163,9 +177,25 @@ namespace EscapeRoom.Interaction
                 openCoroutine = StartCoroutine(AnimateLidOpen());
             }
 
+            if (contentsObject == null)
+            {
+                var clueChild = GetComponentInChildren<ClueInteractable>(true);
+                if (clueChild != null)
+                {
+                    contentsObject = clueChild.gameObject;
+                }
+            }
+
             if (contentsObject != null)
             {
                 contentsObject.SetActive(true);
+            }
+
+            // Disable container interaction collider so player can directly look at and target contents
+            Collider rootCol = GetComponent<Collider>();
+            if (rootCol != null)
+            {
+                rootCol.enabled = false;
             }
 
             Debug.Log($"<color=#5cb85c><b>[LockedContainer]</b></color> '{gameObject.name}' is now open.");

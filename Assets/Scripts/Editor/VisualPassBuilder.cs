@@ -628,21 +628,12 @@ namespace EscapeRoom.Editor
 
         private static void BuildFurnitureDetails(Transform parent, MaterialPalette p)
         {
-            // --- CABINET POLISH (X = -3.50m, Z = 2.00m) ---
-            // Cabinet body sits at X = -3.50, Y = 1.05, Z = 2.00. Size: (0.6, 1.9, 1.0). Front face is at X = -3.20m.
-            // Add two recessed door slabs on front face
-            float doorW = 0.46f;
-            float doorH = 1.60f;
-            float doorD = 0.02f;
-            float doorX = -3.19f;
-
-            CreateVisualCube("Cabinet_Door_Left", parent, new Vector3(doorX, 1.05f, 1.74f), new Vector3(doorD, doorH, doorW), Quaternion.identity, p.DarkWood);
-            CreateVisualCube("Cabinet_Door_Right", parent, new Vector3(doorX, 1.05f, 2.26f), new Vector3(doorD, doorH, doorW), Quaternion.identity, p.DarkWood);
-
-            // Metal door pull handles
-            float handleX = -3.17f;
-            CreateVisualCube("Cabinet_Handle_Left", parent, new Vector3(handleX, 1.05f, 1.94f), new Vector3(0.02f, 0.14f, 0.02f), Quaternion.identity, p.Metal);
-            CreateVisualCube("Cabinet_Handle_Right", parent, new Vector3(handleX, 1.05f, 2.06f), new Vector3(0.02f, 0.14f, 0.02f), Quaternion.identity, p.Metal);
+            // Cabinet doors and handles are now unified under Cabinet hierarchy in EscapeRoomBuilder.
+            // Style them if present:
+            AssignMaterialToGameObject("Cabinet_Door_Left", p.DarkWood);
+            AssignMaterialToGameObject("Cabinet_Door_Right", p.DarkWood);
+            AssignMaterialToGameObject("Cabinet_Handle_Left", p.Metal);
+            AssignMaterialToGameObject("Cabinet_Handle_Right", p.Metal);
 
             // --- TABLE POLISH (X = 1.50m, Z = -1.00m) ---
             // Table top sits at Y = 0.85m. Under-table apron beams sit at Y = 0.76m.
