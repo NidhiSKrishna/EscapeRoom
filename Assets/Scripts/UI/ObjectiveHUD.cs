@@ -1,0 +1,407 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+using EscapeRoom.Core;
+using EscapeRoom.Interaction;
+using EscapeRoom.Player;
+
+namespace EscapeRoom.UI
+{
+    /// <summary>
+    /// Displays the compact top HUD ('STEP X / 7') with orange flash animations and audio chimes on advancement.
+    /// Provides expanded objective inspection panel toggled via T key.
+    /// Modal-aware to prevent interference with keypad input or clue reading.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public class ObjectiveHUD : MonoBehaviour
+    {
+        private static ObjectiveHUD instance;
+        public static ObjectiveHUD Instance => instance;
+
+        [Header("Expanded View State")]
+        [SerializeField] private bool isExpandedOpen = false;
+
+        [Header("Animation & Polish")]
+        [SerializeField] private float flashDuration = 1.0f;
+        private float flashTimer = 0f;
+
+        [Header("Audio Chime")]
+        [SerializeField] private AudioSource audioSource;
+        private AudioClip proceduralDingClip;
+
+        public bool IsExpandedOpen => isExpandedOpen;
+        public static bool IsExpandedViewOpen => instance != null && instance.isExpandedOpen;
+
+        private void Awake()
+        {
+            if (instance != null && instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            instance = this;
+
+            EnsureAudioSetup();
+        }
+
+        private void OnDestroy()
+        {
+            if (instance == this)
+            {
+                instance = null;
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (ObjectiveManager.Instance != null)
+            {
+                ObjectiveManager.Instance.OnStepChanged += HandleStepChanged;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (ObjectiveManager.Instance != null)
+            {
+                ObjectiveManager.Instance.OnStepChanged -= HandleStepChanged;
+            }
+        }
+
+        private void Start()
+        {
+            if (ObjectiveManager.Instance != null)
+            {
+                ObjectiveManager.Instance.OnStepChanged -= HandleStepChanged;
+                ObjectiveManager.Instance.OnStepChanged += HandleStepChanged;
+            }
+        }
+
+        private void EnsureAudioSetup()
+        {
+            if (audioSource == null)
+            {
+                audioSource = GetComponent<AudioSource>();
+            }
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 0f; // 2D UI sound
+            }
+
+            if (proceduralDingClip == null)
+            {
+                proceduralDingClip = CreateProceduralDingClip();
+            }
+        }
+
+        /// <summary>
+        /// Generates a pleasant 880Hz sine chime procedural audio clip with zero external asset dependencies.
+        /// </summary>
+        private AudioClip CreateProceduralDingClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.25f;
+            int numSamples = Mathf.FloorToInt(sampleRate * duration);
+            float[] samples = new float[numSamples];
+            float frequency = 880.0f; // A5 tone
+
+            for (int i = 0; i < numSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 14.0f); // Exponential decay
+                samples[i] = envelope * Mathf.Sin(2.0f * Mathf.PI * frequency * t) * 0.45f;
+            }
+
+            AudioClip clip = AudioClip.Create("ObjectiveDing", numSamples, 1, sampleRate, false);
+            clip.SetData(samples, 0);
+            return clip;
+        }
+
+        private void HandleStepChanged(int stepIndex, ObjectiveStep step)
+        {
+            flashTimer = flashDuration;
+
+            if (audioSource != null && proceduralDingClip != null)
+            {
+                audioSource.PlayOneShot(proceduralDingClip, 0.7f);
+            }
+        }
+
+        private void Update()
+        {
+            if (flashTimer > 0f)
+            {
+                flashTimer -= Time.unscaledDeltaTime;
+                if (flashTimer < 0f) flashTimer = 0f;
+            }
+
+            HandleInput();
+        }
+
+        private void HandleInput()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            // Toggle expanded view with T
+            if (keyboard.tKey.wasPressedThisFrame)
+            {
+                if (CanToggleExpandedView())
+                {
+                    ToggleExpandedView();
+                }
+            }
+
+            // Close expanded view with ESC
+            if (isExpandedOpen && keyboard.escapeKey.wasPressedThisFrame)
+            {
+                CloseExpandedView();
+            }
+        }
+
+        public bool CanToggleExpandedView()
+        {
+            if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return false;
+            if (ClueInteractable.IsAnyClueOpen) return false;
+            if (AtticBriefingUI.IsBriefingOpen) return false;
+            if (PhoneIntroUI.IsIntroOpen) return false;
+            if (PauseManager.Instance != null && PauseManager.Instance.IsPaused) return false;
+            if (EscapeUI.Instance != null && EscapeUI.Instance.IsOpen) return false;
+            return true;
+        }
+
+        public void ToggleExpandedView()
+        {
+            if (isExpandedOpen)
+            {
+                CloseExpandedView();
+            }
+            else
+            {
+                OpenExpandedView();
+            }
+        }
+
+        public void OpenExpandedView()
+        {
+            isExpandedOpen = true;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            var look = FindAnyObjectByType<PlayerLook>();
+            if (look != null) look.SetCursorLock(false);
+        }
+
+        public void CloseExpandedView()
+        {
+            isExpandedOpen = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+
+            var look = FindAnyObjectByType<PlayerLook>();
+            if (look != null) look.SetCursorLock(true);
+        }
+
+        private void OnGUI()
+        {
+            // Do not render HUD when briefing, phone intro, clue, keypad, pause, or escape are open
+            if (AtticBriefingUI.IsBriefingOpen || PhoneIntroUI.IsIntroOpen) return;
+            if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return;
+            if (ClueInteractable.IsAnyClueOpen) return;
+            if (PauseManager.Instance != null && PauseManager.Instance.IsPaused) return;
+            if (EscapeUI.Instance != null && EscapeUI.Instance.IsOpen) return;
+
+            if (isExpandedOpen)
+            {
+                DrawExpandedView();
+            }
+            else
+            {
+                DrawCompactHUD();
+            }
+        }
+
+        private void DrawCompactHUD()
+        {
+            var om = ObjectiveManager.Instance;
+            if (om == null || !om.IsSystemActive) return;
+
+            Color oldColor = GUI.color;
+
+            float hudW = Mathf.Min(480f, Screen.width * 0.9f);
+            float hudH = 54f;
+            float hudX = (Screen.width - hudW) * 0.5f;
+            float hudY = 14f;
+
+            // Flash interpolation
+            float flashFactor = flashTimer > 0f ? (flashTimer / flashDuration) : 0f;
+            Color borderColor = Color.Lerp(new Color(0.25f, 0.30f, 0.38f, 0.85f), new Color(1.0f, 0.55f, 0.10f, 0.95f), flashFactor);
+            Color bgColor = Color.Lerp(new Color(0.08f, 0.10f, 0.14f, 0.88f), new Color(0.20f, 0.12f, 0.05f, 0.92f), flashFactor);
+
+            // Background box
+            GUI.color = bgColor;
+            GUI.Box(new Rect(hudX, hudY, hudW, hudH), GUIContent.none);
+
+            // Border highlight
+            GUI.color = borderColor;
+            GUI.Box(new Rect(hudX + 2, hudY + 2, hudW - 4, hudH - 4), GUIContent.none);
+
+            // Fill
+            GUI.color = bgColor;
+            GUI.Box(new Rect(hudX + 4, hudY + 4, hudW - 8, hudH - 8), GUIContent.none);
+
+            int currentStepNum = om.CurrentStepIndex + 1;
+            int totalSteps = om.TotalSteps;
+            string stepInstruction = om.CurrentStep != null ? om.CurrentStep.Instruction : "Escape the facility.";
+
+            // Step Header label: STEP X / 7
+            GUI.color = Color.white;
+            var headerStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(0.98f, 0.82f, 0.25f) }
+            };
+            GUI.Label(new Rect(hudX + 10, hudY + 6, hudW - 20, 16), $"STEP {currentStepNum} / {totalSteps}", headerStyle);
+
+            // Instruction label
+            var instrStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 13,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                wordWrap = true,
+                normal = { textColor = new Color(0.95f, 0.96f, 0.98f) }
+            };
+            GUI.Label(new Rect(hudX + 10, hudY + 24, hudW - 20, 24), stepInstruction, instrStyle);
+
+            GUI.color = oldColor;
+        }
+
+        private void DrawExpandedView()
+        {
+            var om = ObjectiveManager.Instance;
+            if (om == null) return;
+
+            Color oldColor = GUI.color;
+
+            // Full-screen dim
+            GUI.color = new Color(0.03f, 0.04f, 0.06f, 0.88f);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+
+            float cardW = Mathf.Min(560f, Screen.width * 0.92f);
+            float cardH = Mathf.Min(520f, Screen.height * 0.92f);
+            float cardX = (Screen.width - cardW) * 0.5f;
+            float cardY = (Screen.height - cardH) * 0.5f;
+
+            // Panel frame
+            GUI.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+            GUI.Box(new Rect(cardX, cardY, cardW, cardH), GUIContent.none);
+
+            // Gold border
+            GUI.color = new Color(0.96f, 0.78f, 0.20f, 0.85f);
+            GUI.Box(new Rect(cardX + 3, cardY + 3, cardW - 6, cardH - 6), GUIContent.none);
+
+            // Background
+            GUI.color = new Color(0.12f, 0.14f, 0.18f, 1f);
+            GUI.Box(new Rect(cardX + 5, cardY + 5, cardW - 10, cardH - 10), GUIContent.none);
+
+            GUI.color = Color.white;
+
+            // Header Title
+            var titleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 22,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(0.98f, 0.85f, 0.35f) }
+            };
+            GUI.Label(new Rect(cardX + 20, cardY + 18, cardW - 40, 32), "ESCAPE ROOM 1", titleStyle);
+
+            // Subtitle
+            var subStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(0.65f, 0.70f, 0.75f) }
+            };
+            GUI.Label(new Rect(cardX + 20, cardY + 50, cardW - 40, 18), "OBJECTIVE PROGRESSION ([T] or [ESC] to close)", subStyle);
+
+            // Divider
+            GUI.color = new Color(0.96f, 0.78f, 0.20f, 0.40f);
+            GUI.DrawTexture(new Rect(cardX + 30, cardY + 74, cardW - 60, 2), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            // Steps List
+            var steps = om.Steps;
+            int currentIdx = om.CurrentStepIndex;
+
+            float listY = cardY + 88f;
+            float rowH = 46f;
+
+            if (steps != null)
+            {
+                for (int i = 0; i < steps.Length; i++)
+                {
+                    var step = steps[i];
+                    if (step == null) continue;
+
+                    string prefix;
+                    Color textColor;
+
+                    if (i < currentIdx)
+                    {
+                        prefix = "✓  ";
+                        textColor = new Color(0.40f, 0.90f, 0.45f); // Completed (Green)
+                    }
+                    else if (i == currentIdx)
+                    {
+                        prefix = "→  ";
+                        textColor = new Color(0.98f, 0.85f, 0.25f); // Current (Gold)
+                    }
+                    else
+                    {
+                        prefix = "○  ";
+                        textColor = new Color(0.55f, 0.60f, 0.65f); // Upcoming (Dim)
+                    }
+
+                    var rowStyle = new GUIStyle(GUI.skin.label)
+                    {
+                        fontSize = 13,
+                        fontStyle = (i == currentIdx) ? FontStyle.Bold : FontStyle.Normal,
+                        alignment = TextAnchor.MiddleLeft,
+                        wordWrap = true,
+                        normal = { textColor = textColor }
+                    };
+
+                    string rowText = $"{prefix}Step {i + 1}: {step.Instruction}";
+                    GUI.Label(new Rect(cardX + 35, listY + (i * rowH), cardW - 70, rowH - 6), rowText, rowStyle);
+                }
+            }
+
+            // Close Button at bottom
+            float btnW = 160f;
+            float btnH = 38f;
+            float btnX = cardX + (cardW - btnW) * 0.5f;
+            float btnY = cardY + cardH - btnH - 18f;
+
+            var closeBtnStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 13,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.black }
+            };
+
+            GUI.backgroundColor = new Color(0.95f, 0.80f, 0.25f, 1f);
+            if (GUI.Button(new Rect(btnX, btnY, btnW, btnH), "CLOSE [T]", closeBtnStyle))
+            {
+                CloseExpandedView();
+            }
+
+            GUI.backgroundColor = Color.white;
+            GUI.color = oldColor;
+        }
+    }
+}

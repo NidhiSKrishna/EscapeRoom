@@ -110,6 +110,9 @@ namespace EscapeRoom.Player
         {
             if (EscapeRoom.Interaction.ClueInteractable.IsAnyClueOpen ||
                 (EscapeRoom.UI.KeypadUI.Instance != null && EscapeRoom.UI.KeypadUI.Instance.IsOpen) ||
+                (EscapeRoom.UI.AtticBriefingUI.IsBriefingOpen) ||
+                (EscapeRoom.UI.PhoneIntroUI.IsIntroOpen) ||
+                (EscapeRoom.UI.ObjectiveHUD.IsExpandedViewOpen) ||
                 (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) ||
                 (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped))
             {

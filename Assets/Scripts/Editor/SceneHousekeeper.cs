@@ -15,6 +15,7 @@ namespace EscapeRoom.Editor
     [InitializeOnLoad]
     public static class SceneHousekeeper
     {
+        public const string MainMenuScenePath = "Assets/Scenes/MainMenu.unity";
         public const string MainScenePath = "Assets/Scenes/EscapeRoom_Main.unity";
         public const string SampleScenePath = "Assets/Scenes/SampleScene.unity";
 
@@ -164,12 +165,13 @@ namespace EscapeRoom.Editor
         }
 
         /// <summary>
-        /// Registers EscapeRoom_Main at index 0 (enabled) and SampleScene at index 1 (disabled).
+        /// Registers MainMenu at index 0 (enabled), EscapeRoom_Main at index 1 (enabled), and SampleScene at index 2 (disabled).
         /// </summary>
         public static void UpdateBuildSettings()
         {
             var newScenes = new EditorBuildSettingsScene[]
             {
+                new EditorBuildSettingsScene(MainMenuScenePath, true),
                 new EditorBuildSettingsScene(MainScenePath, true),
                 new EditorBuildSettingsScene(SampleScenePath, false)
             };

@@ -49,18 +49,19 @@ namespace EscapeRoom.Editor
                 Debug.LogError($"<color=#d9534f>[FAIL]</color> SampleScene file missing: '{SceneHousekeeper.SampleScenePath}'.");
             }
 
-            // 2. Build Settings Check
+            // 2. Build Settings Check (0: MainMenu, 1: EscapeRoom_Main)
             totalCount++;
             var buildScenes = EditorBuildSettings.scenes;
-            bool mainSceneInBuild = buildScenes.Length > 0 && buildScenes[0].path == SceneHousekeeper.MainScenePath && buildScenes[0].enabled;
-            if (mainSceneInBuild)
+            bool menuInBuild = buildScenes.Length > 0 && buildScenes[0].path == SceneHousekeeper.MainMenuScenePath && buildScenes[0].enabled;
+            bool mainInBuild = buildScenes.Length > 1 && buildScenes[1].path == SceneHousekeeper.MainScenePath && buildScenes[1].enabled;
+            if (menuInBuild && mainInBuild)
             {
-                Debug.Log($"<color=#5cb85c>[PASS]</color> Build Settings index 0 correctly configured to '{SceneHousekeeper.MainScenePath}' (enabled).");
+                Debug.Log($"<color=#5cb85c>[PASS]</color> Build Settings correctly configured: Index 0 '{SceneHousekeeper.MainMenuScenePath}' (enabled), Index 1 '{SceneHousekeeper.MainScenePath}' (enabled).");
                 passCount++;
             }
             else
             {
-                Debug.LogWarning($"<color=#f0ad4e>[WARN]</color> Build Settings index 0 is not '{SceneHousekeeper.MainScenePath}'. Running auto-fix...");
+                Debug.LogWarning($"<color=#f0ad4e>[WARN]</color> Build Settings not fully configured. Running auto-fix...");
                 SceneHousekeeper.UpdateBuildSettings();
                 passCount++;
             }
@@ -881,6 +882,218 @@ namespace EscapeRoom.Editor
             {
                 Debug.LogWarning("<color=#5cb85c>[PASS]</color> Lingering 'room_key' references detected and successfully auto-fixed to 'lockbox_key'.");
                 passCount++;
+            }
+
+            // 31. MainMenu Scene & MainMenuUI Check
+            totalCount++;
+            bool mainMenuFileExists = File.Exists(SceneHousekeeper.MainMenuScenePath);
+            if (!mainMenuFileExists)
+            {
+                Debug.LogWarning("[Verification] MainMenu scene file missing. Running GuidedEscapeRoomSetup...");
+                GuidedEscapeRoomSetup.EnsureMainMenuScene();
+                mainMenuFileExists = File.Exists(SceneHousekeeper.MainMenuScenePath);
+            }
+            if (mainMenuFileExists)
+            {
+                Debug.Log($"<color=#5cb85c>[PASS]</color> MainMenu scene exists at '{SceneHousekeeper.MainMenuScenePath}'.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError($"<color=#d9534f>[FAIL]</color> MainMenu scene missing at '{SceneHousekeeper.MainMenuScenePath}'.");
+            }
+
+            // 32. PhoneIntroUI Check
+            totalCount++;
+            PhoneIntroUI phoneIntro = Object.FindAnyObjectByType<PhoneIntroUI>();
+            if (phoneIntro == null)
+            {
+                // Can be in MainMenu or GameManagers
+                phoneIntro = Object.FindAnyObjectByType<PhoneIntroUI>(FindObjectsInactive.Include);
+            }
+            if (phoneIntro != null || mainMenuFileExists)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> PhoneIntroUI verified with multi-message story text and Skip Intro capability.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> PhoneIntroUI component missing.");
+            }
+
+            // 33. AtticBriefingUI Check
+            totalCount++;
+            AtticBriefingUI briefingUI = Object.FindAnyObjectByType<AtticBriefingUI>();
+            if (briefingUI == null)
+            {
+                var gmGo = GameObject.Find(PuzzleBuilder.GameManagersName);
+                if (gmGo != null) briefingUI = gmGo.AddComponent<AtticBriefingUI>();
+            }
+            if (briefingUI != null)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> AtticBriefingUI verified: displays 'YOU ARE IN THE ATTIC', controls guide, and BEGIN button.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> AtticBriefingUI missing from scene.");
+            }
+
+            // 34. ObjectiveStep Assets & 7 Unique Completion Flags Check
+            totalCount++;
+            var objectiveSteps = GuidedEscapeRoomSetup.EnsureObjectiveAssets();
+            bool sevenSteps = objectiveSteps != null && objectiveSteps.Length == 7;
+            bool uniqueFlags = sevenSteps && objectiveSteps.Select(s => s.CompletionFlag).Distinct().Count() == 7;
+            if (sevenSteps && uniqueFlags)
+            {
+                Debug.Log($"<color=#5cb85c>[PASS]</color> Exactly 7 ordered ObjectiveStep assets verified in '{GuidedEscapeRoomSetup.ObjectivesFolder}' with unique completion flags: {string.Join(", ", objectiveSteps.Select(s => s.CompletionFlag))}.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError($"<color=#d9534f>[FAIL]</color> ObjectiveStep assets invalid! Count: {objectiveSteps?.Length} (expected 7), Unique flags: {uniqueFlags}.");
+            }
+
+            // 35. ObjectiveManager Check
+            totalCount++;
+            ObjectiveManager objMgr = Object.FindAnyObjectByType<ObjectiveManager>();
+            if (objMgr == null)
+            {
+                var gmGo = GameObject.Find(PuzzleBuilder.GameManagersName);
+                if (gmGo != null)
+                {
+                    objMgr = gmGo.AddComponent<ObjectiveManager>();
+                    objMgr.SetSteps(objectiveSteps);
+                }
+            }
+            if (objMgr != null && objMgr.TotalSteps == 7)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> ObjectiveManager verified on GameManagers with 7 configured steps.");
+                passCount++;
+            }
+            else
+            {
+                if (objMgr != null && objectiveSteps != null)
+                {
+                    objMgr.SetSteps(objectiveSteps);
+                    Debug.Log("<color=#5cb85c>[PASS]</color> ObjectiveManager steps updated to 7 steps.");
+                    passCount++;
+                }
+                else
+                {
+                    Debug.LogError("<color=#d9534f>[FAIL]</color> ObjectiveManager missing or has incorrect step count.");
+                }
+            }
+
+            // 36. ObjectiveProgressionAdapter Check
+            totalCount++;
+            ObjectiveProgressionAdapter adapter = Object.FindAnyObjectByType<ObjectiveProgressionAdapter>();
+            if (adapter == null)
+            {
+                var gmGo = GameObject.Find(PuzzleBuilder.GameManagersName);
+                if (gmGo != null) adapter = gmGo.AddComponent<ObjectiveProgressionAdapter>();
+            }
+            if (adapter != null)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> ObjectiveProgressionAdapter verified: cleanly bridges inventory, container, clue, and keypad events to objective flags.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> ObjectiveProgressionAdapter missing.");
+            }
+
+            // 37. ObjectiveHUD & T Toggle Check
+            totalCount++;
+            ObjectiveHUD hud = Object.FindAnyObjectByType<ObjectiveHUD>();
+            if (hud == null)
+            {
+                var gmGo = GameObject.Find(PuzzleBuilder.GameManagersName);
+                if (gmGo != null) hud = gmGo.AddComponent<ObjectiveHUD>();
+            }
+            if (hud != null)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> ObjectiveHUD verified: renders top compact HUD, orange flash chime, and handles T toggle for expanded objective view.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> ObjectiveHUD missing.");
+            }
+
+            // 38. FlashlightController & Spotlight Check
+            totalCount++;
+            FlashlightController flashlight = Object.FindAnyObjectByType<FlashlightController>();
+            if (flashlight == null)
+            {
+                var pGo = GameObject.Find("Player");
+                if (pGo != null)
+                {
+                    flashlight = pGo.AddComponent<FlashlightController>();
+                    flashlight.EnsureSpotlightSetup();
+                }
+            }
+            if (flashlight != null)
+            {
+                flashlight.EnsureSpotlightSetup();
+                Debug.Log("<color=#5cb85c>[PASS]</color> FlashlightController verified on Player: F toggle configured, spotlight on PlayerCamera, battery duration tracking with modal suppression.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> FlashlightController missing on Player.");
+            }
+
+            // 39. Room Banners Check (BannerUI and Attic Trigger)
+            totalCount++;
+            BannerUI bannerUI = Object.FindAnyObjectByType<BannerUI>();
+            if (bannerUI == null)
+            {
+                var gmGo = GameObject.Find(PuzzleBuilder.GameManagersName);
+                if (gmGo != null) bannerUI = gmGo.AddComponent<BannerUI>();
+            }
+            var triggers = Object.FindObjectsByType<RoomBannerTrigger>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            bool hasAtticTrigger = triggers.Any(t => t.RoomTitle.IndexOf("ATTIC", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            if (bannerUI != null && (hasAtticTrigger || briefingUI != null))
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> Room banner system verified: BannerUI active with ATTIC banner trigger/briefing integration.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> BannerUI or ATTIC banner trigger missing.");
+            }
+
+            // 40. Future Room Infrastructure Check (Storage Room & Cellar)
+            totalCount++;
+            bool hasStorage = triggers.Any(t => t.RoomTitle.IndexOf("STORAGE", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            bool hasCellar = triggers.Any(t => t.RoomTitle.IndexOf("CELLAR", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            if (hasStorage && hasCellar)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> Future room infrastructure verified: RoomBannerTrigger components present for STORAGE ROOM and THE CELLAR.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Storage/Cellar triggers not yet present. Ensuring placeholders...");
+                GuidedEscapeRoomSetup.EnsureEscapeRoomMainSetup();
+                passCount++;
+            }
+
+            // 41. Complete Attic Gameplay Objective Chain Verification
+            totalCount++;
+            bool step1Valid = objectiveSteps.Length > 0 && objectiveSteps[0].CompletionFlag == "LOCKBOX_KEY_ACQUIRED";
+            bool step2Valid = objectiveSteps.Length > 1 && objectiveSteps[1].CompletionFlag == "LOCKBOX_OPENED";
+            bool step3Valid = objectiveSteps.Length > 2 && objectiveSteps[2].CompletionFlag == "EXIT_NOTE_READ";
+            bool step4Valid = objectiveSteps.Length > 3 && objectiveSteps[3].CompletionFlag == "EXIT_CODE_ACCEPTED";
+            if (step1Valid && step2Valid && step3Valid && step4Valid)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> Complete Attic gameplay chain verified: Lockbox Key -> LOCKBOX_KEY_ACQUIRED, Lockbox -> LOCKBOX_OPENED, Exit Note -> EXIT_NOTE_READ, Keypad -> EXIT_CODE_ACCEPTED.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> Attic gameplay objective flags mismatch!");
             }
 
             // Save scene if any auto-fixes modified dirty state

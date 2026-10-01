@@ -36,6 +36,7 @@ namespace EscapeRoom.Interaction
         private static ClueInteractable activeClue;
         public static bool IsAnyClueOpen => activeClue != null && activeClue.isReading;
         public static ClueInteractable ActiveClue => activeClue;
+        public static event System.Action OnAnyClueOpened;
 
         private bool isReading = false;
         private PlayerLook cachedPlayerLook;
@@ -181,6 +182,8 @@ namespace EscapeRoom.Interaction
 
             FeedbackHUD.ShowMessage("Reading: " + clueTitle, new Color(0.90f, 0.90f, 0.70f));
             Debug.Log($"<color=#337ab7><b>[ClueInteractable]</b></color> Opened '{clueTitle}' displaying code: {CurrentCode}.");
+
+            OnAnyClueOpened?.Invoke();
         }
 
         public void CloseClue()

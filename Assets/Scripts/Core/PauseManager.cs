@@ -71,13 +71,26 @@ namespace EscapeRoom.Core
                 return;
             }
 
-            // Priority 3: Game already completed (escaped) -> do not pause
+            // Priority 3: Briefing or Intro is open -> do not pause or bypass with Escape
+            if (AtticBriefingUI.IsBriefingOpen || PhoneIntroUI.IsIntroOpen)
+            {
+                return;
+            }
+
+            // Priority 4: Expanded Objective view is open -> close it, do not pause
+            if (ObjectiveHUD.IsExpandedViewOpen && ObjectiveHUD.Instance != null)
+            {
+                ObjectiveHUD.Instance.CloseExpandedView();
+                return;
+            }
+
+            // Priority 5: Game already completed (escaped) -> do not pause
             if (GameManager.Instance != null && GameManager.Instance.HasEscaped)
             {
                 return;
             }
 
-            // Priority 4: Toggle pause state
+            // Priority 6: Toggle pause state
             TogglePause();
         }
 

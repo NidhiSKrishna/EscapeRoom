@@ -36,6 +36,7 @@ namespace EscapeRoom.Puzzle
         [Header("Events")]
         public UnityEvent onCodeAccepted;
         public UnityEvent onCodeRejected;
+        public static event System.Action OnAnyCodeAccepted;
 
         public DoorController LinkedDoor
         {
@@ -94,6 +95,7 @@ namespace EscapeRoom.Puzzle
                 }
 
                 onCodeAccepted?.Invoke();
+                OnAnyCodeAccepted?.Invoke();
                 return true;
             }
             else

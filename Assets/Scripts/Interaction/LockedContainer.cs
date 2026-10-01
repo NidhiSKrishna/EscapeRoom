@@ -49,6 +49,7 @@ namespace EscapeRoom.Interaction
         [Header("Events")]
         public UnityEvent onContainerUnlocked;
         public UnityEvent onContainerOpened;
+        public static event System.Action OnAnyContainerOpened;
 
         private Quaternion closedRotation;
         private Coroutine openCoroutine;
@@ -226,6 +227,7 @@ namespace EscapeRoom.Interaction
 
             Debug.Log($"<color=#5cb85c><b>[LockedContainer]</b></color> '{gameObject.name}' is now open.");
             onContainerOpened?.Invoke();
+            OnAnyContainerOpened?.Invoke();
         }
 
         private IEnumerator AnimateLidOpen()
