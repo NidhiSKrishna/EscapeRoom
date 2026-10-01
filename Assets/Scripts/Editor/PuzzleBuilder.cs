@@ -12,9 +12,9 @@ namespace EscapeRoom.Editor
 {
     /// <summary>
     /// Automated builder for constructing the complete prototype puzzle chain and game-flow systems:
-    /// 1. World Key (ID: room_key) resting on shelf (geometry-aligned)
-    /// 2. Locked Container resting on table (requires room_key)
-    /// 3. Clue Document inside container (revealed on open, hints code 8431)
+    /// 1. World Key (ID: lockbox_key) resting on shelf (geometry-aligned)
+    /// 2. Locked Container resting on table (requires lockbox_key)
+    /// 3. Clue Document inside container (revealed on open, dynamically bound to keypad code 8431)
     /// 4. Keypad Terminal mounted flush on front wall beside exit doorway (configurable code: 8431)
     /// 5. Exit Door inside doorway frame (unlocked by keypad)
     /// 6. Escape Trigger beyond doorway (calls GameManager.CompleteEscape)
@@ -23,7 +23,8 @@ namespace EscapeRoom.Editor
     /// </summary>
     public static class PuzzleBuilder
     {
-        public const string KeyName = "Key_Room";
+        public const string KeyName = "Key_Lockbox";
+        public const string LegacyKeyName = "Key_Room";
         public const string ContainerName = "Container_Lockbox";
         public const string ClueName = "Clue_Document";
         public const string KeypadName = "Terminal_Keypad";
@@ -31,7 +32,8 @@ namespace EscapeRoom.Editor
         public const string EscapeTriggerName = "Escape_Trigger";
         public const string GameManagersName = "GameManagers";
 
-        public const string DefaultKeyId = "room_key";
+        public const string DefaultKeyId = "lockbox_key";
+        public const string DefaultKeyName = "Lockbox Key";
         public const string DefaultKeypadCode = "8431";
 
         [MenuItem("Tools/Escape Room/Build Prototype Puzzle", false, 20)]
@@ -86,7 +88,7 @@ namespace EscapeRoom.Editor
         /// </summary>
         public static void PurgeExistingPuzzleObjects()
         {
-            string[] names = { KeyName, ContainerName, ClueName, KeypadName, ExitDoorName, EscapeTriggerName };
+            string[] names = { KeyName, LegacyKeyName, ContainerName, ClueName, KeypadName, ExitDoorName, EscapeTriggerName };
             foreach (var n in names)
             {
                 var allFound = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None)
@@ -166,8 +168,8 @@ namespace EscapeRoom.Editor
             // 3. Build Escape Trigger (beyond exit door)
             EscapeTrigger escapeTrigger = BuildEscapeTrigger(puzzleParent, forceRebuild);
 
-            // 4. Build Clue Document
-            ClueInteractable clue = BuildClue(puzzleParent, clueMat, forceRebuild);
+            // 4. Build Clue Document (dynamically linked to exit keypad)
+            ClueInteractable clue = BuildClue(puzzleParent, clueMat, keypadCtrl, forceRebuild);
 
             // 5. Build Locked Container (housing the clue, resting on table)
             LockedContainer container = BuildLockedContainer(puzzleParent, boxMat, clue, forceRebuild);
@@ -247,9 +249,22 @@ namespace EscapeRoom.Editor
         private static KeyItem BuildKey(Transform parent, Material mat, bool forceRebuild)
         {
             GameObject existing = GameObject.Find(KeyName);
+            if (existing == null)
+            {
+                existing = GameObject.Find(LegacyKeyName);
+                if (existing != null)
+                {
+                    existing.name = KeyName;
+                }
+            }
             if (existing != null)
             {
-                if (!forceRebuild) return existing.GetComponent<KeyItem>();
+                var existingKey = existing.GetComponent<KeyItem>();
+                if (existingKey != null)
+                {
+                    existingKey.ConfigureItem(DefaultKeyId, DefaultKeyName, "A solid brass key that fits the old lockbox on the table.");
+                }
+                if (!forceRebuild) return existingKey;
                 Undo.DestroyObjectImmediate(existing);
             }
 
@@ -271,7 +286,7 @@ namespace EscapeRoom.Editor
             }
 
             KeyItem keyItem = pb.gameObject.AddComponent<KeyItem>();
-            keyItem.ConfigureItem(DefaultKeyId, "Room Key", "A solid brass key that fits an old lockbox.");
+            keyItem.ConfigureItem(DefaultKeyId, DefaultKeyName, "A solid brass key that fits the old lockbox on the table.");
 
             return keyItem;
         }
@@ -288,7 +303,10 @@ namespace EscapeRoom.Editor
             Material boxMat = EscapeRoomBuilder.GetOrCreateMaterial("M_Proto_Lockbox", new Color(0.24f, 0.25f, 0.28f), 0.50f, 0.30f);
             Material clueMat = EscapeRoomBuilder.GetOrCreateMaterial("M_Proto_Clue", new Color(0.93f, 0.89f, 0.78f), 0.05f, 0.10f);
 
-            ClueInteractable clue = BuildClue(puzzleParent, clueMat, forceRebuild: true);
+            GameObject keypadGo = GameObject.Find(KeypadName);
+            KeypadController keypadCtrl = keypadGo != null ? keypadGo.GetComponent<KeypadController>() : Object.FindAnyObjectByType<KeypadController>();
+
+            ClueInteractable clue = BuildClue(puzzleParent, clueMat, keypadCtrl, forceRebuild: true);
             LockedContainer container = BuildLockedContainer(puzzleParent, boxMat, clue, forceRebuild: true);
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
@@ -301,7 +319,13 @@ namespace EscapeRoom.Editor
             if (existing != null)
             {
                 bool isHollow = existing.transform.Find("Lockbox_Base/Lockbox_Floor") != null;
-                if (!forceRebuild && isHollow) return existing.GetComponent<LockedContainer>();
+                var existingLocked = existing.GetComponent<LockedContainer>();
+                if (existingLocked != null)
+                {
+                    existingLocked.RequiredItemId = DefaultKeyId;
+                    existingLocked.RequiredItemName = DefaultKeyName;
+                }
+                if (!forceRebuild && isHollow) return existingLocked;
 
                 // Detach clue before destroying old container to preserve reference
                 if (clue != null && clue.transform.IsChildOf(existing.transform))
@@ -376,6 +400,7 @@ namespace EscapeRoom.Editor
 
             LockedContainer locked = containerRoot.AddComponent<LockedContainer>();
             locked.RequiredItemId = DefaultKeyId;
+            locked.RequiredItemName = DefaultKeyName;
             locked.LidTransform = lidHinge.transform;
             locked.ContentsObject = clue != null ? clue.gameObject : null;
 
@@ -391,12 +416,18 @@ namespace EscapeRoom.Editor
             return locked;
         }
 
-        private static ClueInteractable BuildClue(Transform parent, Material mat, bool forceRebuild)
+        private static ClueInteractable BuildClue(Transform parent, Material mat, KeypadController linkedKeypad, bool forceRebuild)
         {
             GameObject existing = GameObject.Find(ClueName);
             if (existing != null)
             {
-                if (!forceRebuild) return existing.GetComponent<ClueInteractable>();
+                var existingClue = existing.GetComponent<ClueInteractable>();
+                if (existingClue != null)
+                {
+                    if (linkedKeypad != null) existingClue.TargetKeypad = linkedKeypad;
+                    existingClue.PromptText = "Press E to examine note";
+                }
+                if (!forceRebuild) return existingClue;
                 Undo.DestroyObjectImmediate(existing);
             }
 
@@ -417,15 +448,9 @@ namespace EscapeRoom.Editor
             }
 
             ClueInteractable clue = pb.gameObject.AddComponent<ClueInteractable>();
+            clue.TargetKeypad = linkedKeypad;
             clue.ClueTitle = "Facility Security Override Note";
-            clue.ClueText =
-                "FACILITY OVERRIDE PROTOCOL\n\n" +
-                "In case of lockouts, the door bypass code is calculated from facility blueprint metrics:\n\n" +
-                "  1. Room Width (meters): 8\n" +
-                "  2. Total Wooden Crates: 4\n" +
-                "  3. Room Height rounded: 3\n" +
-                "  4. Exit Doorway Width: 1\n\n" +
-                "Assemble the four digits in sequence to authorize emergency release.";
+            clue.PromptText = "Press E to examine note";
 
             return clue;
         }

@@ -15,10 +15,10 @@ namespace EscapeRoom.Interaction
     {
         [Header("Key Requirement")]
         [Tooltip("The item ID required in the player's inventory to unlock this container.")]
-        [SerializeField] private string requiredItemId = "room_key";
+        [SerializeField] private string requiredItemId = "lockbox_key";
 
         [Tooltip("Friendly name of the required key for prompt display.")]
-        [SerializeField] private string requiredItemName = "Room Key";
+        [SerializeField] private string requiredItemName = "Lockbox Key";
 
         [Tooltip("Whether to consume/remove the key from the inventory upon opening.")]
         [SerializeField] private bool consumeKey = false;
@@ -41,7 +41,7 @@ namespace EscapeRoom.Interaction
         [SerializeField] private GameObject contentsObject;
 
         [Header("Prompts")]
-        [SerializeField] private string lockedMissingKeyPrompt = "Locked (Requires {0})";
+        [SerializeField] private string lockedMissingKeyPrompt = "Locked - requires {0}";
         [SerializeField] private string lockedHaveKeyPrompt = "Press E to unlock with {0}";
         [SerializeField] private string openPrompt = "Press E to open";
         [SerializeField] private string openedPrompt = "Container is already open";
@@ -57,6 +57,12 @@ namespace EscapeRoom.Interaction
         {
             get => requiredItemId;
             set => requiredItemId = value;
+        }
+
+        public string RequiredItemName
+        {
+            get => requiredItemName;
+            set => requiredItemName = value;
         }
 
         public bool IsLocked => isLocked;
@@ -85,7 +91,8 @@ namespace EscapeRoom.Interaction
 
                 if (isLocked)
                 {
-                    bool hasKey = InventorySystem.Instance != null && InventorySystem.Instance.HasItem(requiredItemId);
+                    bool hasKey = InventorySystem.Instance != null &&
+                        (InventorySystem.Instance.HasItem(requiredItemId) || (requiredItemId == "lockbox_key" && InventorySystem.Instance.HasItem("room_key")));
                     return hasKey
                         ? string.Format(lockedHaveKeyPrompt, requiredItemName)
                         : string.Format(lockedMissingKeyPrompt, requiredItemName);
@@ -99,6 +106,17 @@ namespace EscapeRoom.Interaction
 
         private void Awake()
         {
+            // Auto-migrate legacy 'room_key' or old prompt format
+            if (requiredItemId == "room_key")
+            {
+                requiredItemId = "lockbox_key";
+                requiredItemName = "Lockbox Key";
+            }
+            if (lockedMissingKeyPrompt == "Locked (Requires {0})")
+            {
+                lockedMissingKeyPrompt = "Locked - requires {0}";
+            }
+
             if (lidTransform != null)
             {
                 closedRotation = lidTransform.localRotation;
@@ -137,12 +155,13 @@ namespace EscapeRoom.Interaction
                     inventory = FindAnyObjectByType<InventorySystem>();
                 }
 
-                bool hasKey = inventory != null && inventory.HasItem(requiredItemId);
+                bool hasKey = inventory != null &&
+                    (inventory.HasItem(requiredItemId) || (requiredItemId == "lockbox_key" && inventory.HasItem("room_key")));
 
                 if (!hasKey)
                 {
                     Debug.Log($"[LockedContainer] '{gameObject.name}' is locked. Requires '{requiredItemId}'.");
-                    FeedbackHUD.ShowMessage($"Locked! Requires {requiredItemName}.", new Color(0.95f, 0.40f, 0.40f));
+                    FeedbackHUD.ShowMessage($"Locked - requires {requiredItemName}", new Color(0.95f, 0.40f, 0.40f));
                     return;
                 }
 
@@ -154,7 +173,14 @@ namespace EscapeRoom.Interaction
 
                 if (consumeKey && inventory != null)
                 {
-                    inventory.RemoveItem(requiredItemId);
+                    if (inventory.HasItem(requiredItemId))
+                    {
+                        inventory.RemoveItem(requiredItemId);
+                    }
+                    else if (inventory.HasItem("room_key"))
+                    {
+                        inventory.RemoveItem("room_key");
+                    }
                 }
             }
 

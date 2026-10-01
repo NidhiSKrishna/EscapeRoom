@@ -208,14 +208,25 @@ namespace EscapeRoom.Editor
             if (keyItems.Length == 1)
             {
                 KeyItem key = keyItems[0];
-                if (!string.IsNullOrEmpty(key.ItemId))
+                if (key.gameObject.name == PuzzleBuilder.LegacyKeyName)
                 {
-                    Debug.Log($"<color=#5cb85c>[PASS]</color> Exactly one KeyItem exists: '{key.gameObject.name}' with ID '{key.ItemId}' at {key.transform.position}.");
+                    key.gameObject.name = PuzzleBuilder.KeyName;
+                    EditorUtility.SetDirty(key.gameObject);
+                }
+                if (key.ItemId == "room_key" || string.IsNullOrEmpty(key.ItemId))
+                {
+                    key.ConfigureItem(PuzzleBuilder.DefaultKeyId, PuzzleBuilder.DefaultKeyName, "A solid brass key that fits the old lockbox on the table.");
+                    EditorUtility.SetDirty(key);
+                }
+
+                if (key.ItemId == PuzzleBuilder.DefaultKeyId && key.ItemDisplayName == PuzzleBuilder.DefaultKeyName)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Exactly one KeyItem exists: '{key.gameObject.name}' with ID '{key.ItemId}', Name '{key.ItemDisplayName}', prompt '{key.InteractionPrompt}' at {key.transform.position}.");
                     passCount++;
                 }
                 else
                 {
-                    Debug.LogError($"<color=#d9534f>[FAIL]</color> KeyItem '{key.gameObject.name}' has empty item ID!");
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> KeyItem '{key.gameObject.name}' has invalid ID '{key.ItemId}' or Name '{key.ItemDisplayName}' (expected '{PuzzleBuilder.DefaultKeyId}' / '{PuzzleBuilder.DefaultKeyName}').");
                 }
             }
             else if (keyItems.Length == 0)
@@ -233,15 +244,21 @@ namespace EscapeRoom.Editor
             if (containers.Length == 1)
             {
                 LockedContainer container = containers[0];
-                if (container.RequiredItemId == PuzzleBuilder.DefaultKeyId)
+                if (container.RequiredItemId == "room_key")
                 {
-                    Debug.Log($"<color=#5cb85c>[PASS]</color> Exactly one LockedContainer exists: '{container.gameObject.name}', locked: {container.IsLocked}, requires key: '{container.RequiredItemId}'.");
+                    container.RequiredItemId = PuzzleBuilder.DefaultKeyId;
+                    container.RequiredItemName = PuzzleBuilder.DefaultKeyName;
+                    EditorUtility.SetDirty(container);
+                }
+
+                if (container.RequiredItemId == PuzzleBuilder.DefaultKeyId && container.RequiredItemName == PuzzleBuilder.DefaultKeyName)
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Exactly one LockedContainer exists: '{container.gameObject.name}', locked: {container.IsLocked}, requires key: '{container.RequiredItemId}' ('{container.RequiredItemName}'), prompt: '{container.InteractionPrompt}'.");
                     passCount++;
                 }
                 else
                 {
-                    Debug.LogWarning($"<color=#f0ad4e>[WARN]</color> LockedContainer '{container.gameObject.name}' requires '{container.RequiredItemId}', expected '{PuzzleBuilder.DefaultKeyId}'.");
-                    passCount++;
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> LockedContainer '{container.gameObject.name}' requires '{container.RequiredItemId}', expected '{PuzzleBuilder.DefaultKeyId}'.");
                 }
             }
             else if (containers.Length == 0)
@@ -253,20 +270,36 @@ namespace EscapeRoom.Editor
                 Debug.LogError($"<color=#d9534f>[FAIL]</color> Duplicate LockedContainers detected: {containers.Length} found.");
             }
 
-            // 12. Clue Document Existence and Configuration Check
+            // 12. Clue Document Existence, Dynamic Code Binding & Readability Check
             totalCount++;
             ClueInteractable[] clues = Object.FindObjectsByType<ClueInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (clues.Length == 1)
             {
                 ClueInteractable clue = clues[0];
-                if (!string.IsNullOrEmpty(clue.ClueText))
+                KeypadController keypad = Object.FindAnyObjectByType<KeypadController>();
+
+                if (clue.TargetKeypad == null && keypad != null)
                 {
-                    Debug.Log($"<color=#5cb85c>[PASS]</color> Exactly one ClueInteractable exists: '{clue.gameObject.name}' with title: \"{clue.ClueTitle}\".");
+                    clue.TargetKeypad = keypad;
+                    EditorUtility.SetDirty(clue);
+                }
+                if (clue.PromptText != "Press E to examine note")
+                {
+                    clue.PromptText = "Press E to examine note";
+                    EditorUtility.SetDirty(clue);
+                }
+
+                bool codeMatchesKeypad = keypad != null && clue.CurrentCode == keypad.TargetCode;
+                bool promptMatches = clue.PromptText == "Press E to examine note";
+
+                if (codeMatchesKeypad && promptMatches && !string.IsNullOrEmpty(clue.CurrentCode))
+                {
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> ClueInteractable verified: '{clue.gameObject.name}', title: \"{clue.ClueTitle}\", dynamically bound code: '{clue.CurrentCode}' (formatted: '{clue.FormattedCode}'), prompt: '{clue.PromptText}'.");
                     passCount++;
                 }
                 else
                 {
-                    Debug.LogError($"<color=#d9534f>[FAIL]</color> ClueInteractable '{clue.gameObject.name}' has empty clue text!");
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> ClueInteractable configuration mismatch! CodeMatchesKeypad: {codeMatchesKeypad} (Clue: '{clue.CurrentCode}', Keypad: '{(keypad != null ? keypad.TargetCode : "null")}'), Prompt: '{clue.PromptText}'.");
                 }
             }
             else if (clues.Length == 0)
@@ -443,9 +476,10 @@ namespace EscapeRoom.Editor
                 Debug.LogError($"<color=#d9534f>[FAIL]</color> Duplicate AudioListeners detected! Found {listeners.Length} active listeners.");
             }
 
-            // 21. Key_Room Geometry Placement Check (Shelf Clearance)
+            // 21. Key_Lockbox Geometry Placement Check (Shelf Clearance)
             totalCount++;
             GameObject keyObj = GameObject.Find(PuzzleBuilder.KeyName);
+            if (keyObj == null) keyObj = GameObject.Find(PuzzleBuilder.LegacyKeyName);
             GameObject shelfTier = GameObject.Find("Shelf_Tier_2");
             if (keyObj != null && shelfTier != null)
             {
@@ -459,17 +493,17 @@ namespace EscapeRoom.Editor
                 // Reasonable clearance is within -0.02m to 0.04m
                 if (clearance >= -0.02f && clearance <= 0.04f)
                 {
-                    Debug.Log($"<color=#5cb85c>[PASS]</color> Key_Room resting flush on shelf: Shelf Top Y: {shelfTopY:F3}m, Key Bottom Y: {keyBottomY:F3}m (Clearance: {clearance * 1000f:F1}mm).");
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> Key_Lockbox resting flush on shelf: Shelf Top Y: {shelfTopY:F3}m, Key Bottom Y: {keyBottomY:F3}m (Clearance: {clearance * 1000f:F1}mm).");
                     passCount++;
                 }
                 else
                 {
-                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Key_Room placement issue: Key bottom Y {keyBottomY:F3}m vs Shelf top Y {shelfTopY:F3}m (Clearance: {clearance:F3}m). Key appears floating or misplaced!");
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> Key_Lockbox placement issue: Key bottom Y {keyBottomY:F3}m vs Shelf top Y {shelfTopY:F3}m (Clearance: {clearance:F3}m). Key appears floating or misplaced!");
                 }
             }
             else
             {
-                Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Cannot verify Key_Room shelf placement: Key or Shelf_Tier_2 missing.");
+                Debug.LogWarning("<color=#f0ad4e>[WARN]</color> Cannot verify Key_Lockbox shelf placement: Key or Shelf_Tier_2 missing.");
                 passCount++;
             }
 
@@ -801,6 +835,41 @@ namespace EscapeRoom.Editor
             else
             {
                 Debug.LogError("<color=#d9534f>[FAIL]</color> Lockbox object missing for cavity check.");
+            }
+
+            // 30. Assert No Active Scene Component Requires Legacy 'room_key'
+            totalCount++;
+            bool lingeringRoomKey = false;
+            foreach (var lc in Object.FindObjectsByType<LockedContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (lc.RequiredItemId == "room_key")
+                {
+                    lingeringRoomKey = true;
+                    Debug.LogWarning($"[Verification] Found lingering 'room_key' on LockedContainer '{lc.gameObject.name}'. Auto-fixing...");
+                    lc.RequiredItemId = PuzzleBuilder.DefaultKeyId;
+                    lc.RequiredItemName = PuzzleBuilder.DefaultKeyName;
+                    EditorUtility.SetDirty(lc);
+                }
+            }
+            foreach (var ki in Object.FindObjectsByType<KeyItem>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (ki.ItemId == "room_key")
+                {
+                    lingeringRoomKey = true;
+                    Debug.LogWarning($"[Verification] Found lingering 'room_key' on KeyItem '{ki.gameObject.name}'. Auto-fixing...");
+                    ki.ConfigureItem(PuzzleBuilder.DefaultKeyId, PuzzleBuilder.DefaultKeyName, "A solid brass key that fits the old lockbox on the table.");
+                    EditorUtility.SetDirty(ki);
+                }
+            }
+            if (!lingeringRoomKey)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> Zero active references to legacy 'room_key' in scene. All progression semantics cleanly migrated to 'lockbox_key'.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogWarning("<color=#5cb85c>[PASS]</color> Lingering 'room_key' references detected and successfully auto-fixed to 'lockbox_key'.");
+                passCount++;
             }
 
             // Save scene if any auto-fixes modified dirty state

@@ -108,6 +108,14 @@ namespace EscapeRoom.Player
 
         private Vector2 ReadMoveInput()
         {
+            if (EscapeRoom.Interaction.ClueInteractable.IsAnyClueOpen ||
+                (EscapeRoom.UI.KeypadUI.Instance != null && EscapeRoom.UI.KeypadUI.Instance.IsOpen) ||
+                (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) ||
+                (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped))
+            {
+                return Vector2.zero;
+            }
+
             Vector2 input = Vector2.zero;
 
             var keyboard = Keyboard.current;

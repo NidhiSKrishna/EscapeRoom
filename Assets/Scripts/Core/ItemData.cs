@@ -11,7 +11,7 @@ namespace EscapeRoom.Core
     public class ItemData : ScriptableObject
     {
         [Header("Item Identification")]
-        [Tooltip("Unique string identifier for this item (e.g. 'room_key').")]
+        [Tooltip("Unique string identifier for this item (e.g. 'lockbox_key').")]
         [SerializeField] private string itemId = "item_id";
 
         [Tooltip("User-facing display name of the item.")]
