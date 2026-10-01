@@ -283,6 +283,16 @@ namespace EscapeRoom.Editor
                     clue.TargetKeypad = keypad;
                     EditorUtility.SetDirty(clue);
                 }
+                if (clue.ClueTitle == "Facility Security Override Note" || clue.ClueTitle != "Exit Code Note")
+                {
+                    clue.ClueTitle = "Exit Code Note";
+                    EditorUtility.SetDirty(clue);
+                }
+                if (clue.BodyExplanation.Contains("EMERGENCY OVERRIDE PROTOCOL"))
+                {
+                    clue.BodyExplanation = "Emergency exit keypad code:";
+                    EditorUtility.SetDirty(clue);
+                }
                 if (clue.PromptText != "Press E to examine note")
                 {
                     clue.PromptText = "Press E to examine note";
@@ -291,15 +301,16 @@ namespace EscapeRoom.Editor
 
                 bool codeMatchesKeypad = keypad != null && clue.CurrentCode == keypad.TargetCode;
                 bool promptMatches = clue.PromptText == "Press E to examine note";
+                bool titleMatches = clue.ClueTitle == "Exit Code Note";
 
-                if (codeMatchesKeypad && promptMatches && !string.IsNullOrEmpty(clue.CurrentCode))
+                if (codeMatchesKeypad && promptMatches && titleMatches && !string.IsNullOrEmpty(clue.CurrentCode))
                 {
                     Debug.Log($"<color=#5cb85c>[PASS]</color> ClueInteractable verified: '{clue.gameObject.name}', title: \"{clue.ClueTitle}\", dynamically bound code: '{clue.CurrentCode}' (formatted: '{clue.FormattedCode}'), prompt: '{clue.PromptText}'.");
                     passCount++;
                 }
                 else
                 {
-                    Debug.LogError($"<color=#d9534f>[FAIL]</color> ClueInteractable configuration mismatch! CodeMatchesKeypad: {codeMatchesKeypad} (Clue: '{clue.CurrentCode}', Keypad: '{(keypad != null ? keypad.TargetCode : "null")}'), Prompt: '{clue.PromptText}'.");
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> ClueInteractable configuration mismatch! TitleMatches: {titleMatches} ('{clue.ClueTitle}'), CodeMatchesKeypad: {codeMatchesKeypad} (Clue: '{clue.CurrentCode}', Keypad: '{(keypad != null ? keypad.TargetCode : "null")}'), Prompt: '{clue.PromptText}'.");
                 }
             }
             else if (clues.Length == 0)

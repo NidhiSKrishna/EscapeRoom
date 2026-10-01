@@ -425,6 +425,7 @@ namespace EscapeRoom.Editor
                 if (existingClue != null)
                 {
                     if (linkedKeypad != null) existingClue.TargetKeypad = linkedKeypad;
+                    existingClue.ClueTitle = "Exit Code Note";
                     existingClue.PromptText = "Press E to examine note";
                 }
                 if (!forceRebuild) return existingClue;
@@ -449,7 +450,7 @@ namespace EscapeRoom.Editor
 
             ClueInteractable clue = pb.gameObject.AddComponent<ClueInteractable>();
             clue.TargetKeypad = linkedKeypad;
-            clue.ClueTitle = "Facility Security Override Note";
+            clue.ClueTitle = "Exit Code Note";
             clue.PromptText = "Press E to examine note";
 
             return clue;

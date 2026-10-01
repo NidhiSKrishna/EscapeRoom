@@ -21,14 +21,11 @@ namespace EscapeRoom.Interaction
 
         [Header("Clue Content")]
         [Tooltip("Header title displayed at the top of the reading panel.")]
-        [SerializeField] private string clueTitle = "Facility Security Override Note";
+        [SerializeField] private string clueTitle = "Exit Code Note";
 
         [TextArea(2, 5)]
         [Tooltip("Brief explanation that this note contains the emergency exit keypad code.")]
-        [SerializeField] private string bodyExplanation =
-            "EMERGENCY OVERRIDE PROTOCOL\n\n" +
-            "A facility security lockout is currently active.\n" +
-            "Use the authorized emergency keypad code below at the exit door terminal to disengage the magnetic lock and open the door.";
+        [SerializeField] private string bodyExplanation = "Emergency exit keypad code:";
 
         [Tooltip("Fallback code if no KeypadController is linked.")]
         [SerializeField] private string fallbackCode = "8431";
@@ -93,7 +90,7 @@ namespace EscapeRoom.Interaction
 
         public string ClueText
         {
-            get => $"{clueTitle}\n\n{bodyExplanation}\n\nEXIT KEYPAD CODE\n{CurrentCode}";
+            get => $"Emergency exit keypad code: {CurrentCode}";
             set => bodyExplanation = value;
         }
 
@@ -113,6 +110,16 @@ namespace EscapeRoom.Interaction
             if (targetKeypad == null)
             {
                 targetKeypad = FindAnyObjectByType<KeypadController>();
+            }
+
+            // Auto-migrate legacy title and body text
+            if (string.IsNullOrEmpty(clueTitle) || clueTitle == "Facility Security Override Note")
+            {
+                clueTitle = "Exit Code Note";
+            }
+            if (string.IsNullOrEmpty(bodyExplanation) || bodyExplanation.Contains("EMERGENCY OVERRIDE PROTOCOL"))
+            {
+                bodyExplanation = "Emergency exit keypad code:";
             }
 
             // Ensure promptText matches requirement
@@ -172,8 +179,8 @@ namespace EscapeRoom.Interaction
                 Cursor.visible = true;
             }
 
-            FeedbackHUD.ShowMessage("Reading clue: " + clueTitle, new Color(0.90f, 0.90f, 0.70f));
-            Debug.Log($"<color=#337ab7><b>[ClueInteractable]</b></color> Opened clue '{clueTitle}' displaying code: {CurrentCode}.");
+            FeedbackHUD.ShowMessage("Reading: " + clueTitle, new Color(0.90f, 0.90f, 0.70f));
+            Debug.Log($"<color=#337ab7><b>[ClueInteractable]</b></color> Opened '{clueTitle}' displaying code: {CurrentCode}.");
         }
 
         public void CloseClue()
@@ -193,7 +200,7 @@ namespace EscapeRoom.Interaction
                 Cursor.visible = false;
             }
 
-            Debug.Log($"[ClueInteractable] Closed clue '{clueTitle}'.");
+            Debug.Log($"[ClueInteractable] Closed '{clueTitle}'.");
         }
 
         private void OnDestroy()
@@ -217,8 +224,8 @@ namespace EscapeRoom.Interaction
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
 
             // Responsive modal card sizing
-            float panelWidth = Mathf.Clamp(Screen.width * 0.55f, 520f, 640f);
-            float panelHeight = Mathf.Clamp(Screen.height * 0.65f, 440f, 520f);
+            float panelWidth = Mathf.Clamp(Screen.width * 0.48f, 460f, 540f);
+            float panelHeight = Mathf.Clamp(Screen.height * 0.48f, 300f, 360f);
             float panelX = (Screen.width - panelWidth) * 0.5f;
             float panelY = (Screen.height - panelHeight) * 0.5f;
 
@@ -227,10 +234,10 @@ namespace EscapeRoom.Interaction
             GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), Texture2D.whiteTexture);
 
             // 3. Document card background (solid dark slate, high contrast)
-            GUI.color = new Color(0.12f, 0.13f, 0.17f, 1.0f);
+            GUI.color = new Color(0.11f, 0.12f, 0.16f, 1.0f);
             GUI.DrawTexture(new Rect(panelX + 3, panelY + 3, panelWidth - 6, panelHeight - 6), Texture2D.whiteTexture);
 
-            // 4. Header title: CLUE TITLE
+            // 4. Header title: Exit Code Note
             GUI.color = Color.white;
             GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
             {
@@ -239,65 +246,52 @@ namespace EscapeRoom.Interaction
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = new Color(1.0f, 0.86f, 0.40f) }
             };
-            GUI.Label(new Rect(panelX + 20, panelY + 20, panelWidth - 40, 32), clueTitle, titleStyle);
+            GUI.Label(new Rect(panelX + 20, panelY + 18, panelWidth - 40, 30), clueTitle, titleStyle);
 
             // 5. Divider line
             GUI.color = new Color(0.85f, 0.72f, 0.35f, 0.50f);
-            GUI.DrawTexture(new Rect(panelX + 24, panelY + 56, panelWidth - 48, 2), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(panelX + 24, panelY + 52, panelWidth - 48, 2), Texture2D.whiteTexture);
 
-            // 6. Body explanation text
+            // 6. Label: Emergency exit keypad code:
             GUI.color = Color.white;
-            GUIStyle bodyStyle = new GUIStyle(GUI.skin.label)
+            GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 15,
-                fontStyle = FontStyle.Normal,
+                fontSize = 17,
+                fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                wordWrap = true,
-                normal = { textColor = new Color(0.90f, 0.92f, 0.96f) }
+                normal = { textColor = new Color(0.88f, 0.92f, 0.98f) }
             };
-            float bodyHeight = 68f;
-            GUI.Label(new Rect(panelX + 30, panelY + 68, panelWidth - 60, bodyHeight), bodyExplanation, bodyStyle);
+            GUI.Label(new Rect(panelX + 20, panelY + 68, panelWidth - 40, 28), "Emergency exit keypad code:", labelStyle);
 
-            // 7. Prominent Keypad Code Display Box
+            // 7. Prominent High-Contrast Keypad Code Display Box
             float codeBoxWidth = panelWidth - 64f;
-            float codeBoxHeight = 120f;
+            float codeBoxHeight = 90f;
             float codeBoxX = panelX + 32f;
-            float codeBoxY = panelY + 68f + bodyHeight + 14f;
+            float codeBoxY = panelY + 104f;
 
-            // Code box outer border (cyan/terminal accent)
-            GUI.color = new Color(0.30f, 0.65f, 0.95f, 0.90f);
+            // Code box outer border (vibrant cyan accent)
+            GUI.color = new Color(0.30f, 0.70f, 1.0f, 0.95f);
             GUI.DrawTexture(new Rect(codeBoxX, codeBoxY, codeBoxWidth, codeBoxHeight), Texture2D.whiteTexture);
 
             // Code box inner dark fill
-            GUI.color = new Color(0.05f, 0.07f, 0.10f, 1.0f);
+            GUI.color = new Color(0.04f, 0.06f, 0.09f, 1.0f);
             GUI.DrawTexture(new Rect(codeBoxX + 2, codeBoxY + 2, codeBoxWidth - 4, codeBoxHeight - 4), Texture2D.whiteTexture);
 
-            // Code Box Subheader: EXIT KEYPAD CODE
-            GUI.color = Color.white;
-            GUIStyle codeHeaderStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 15,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.55f, 0.85f, 1.0f) }
-            };
-            GUI.Label(new Rect(codeBoxX + 10, codeBoxY + 12, codeBoxWidth - 20, 22), "EXIT KEYPAD CODE", codeHeaderStyle);
-
-            // Code Box Big Digits: 8   4   3   1
+            // Code Box Big Digits: 8431 (Large, bold, high-contrast gold text)
             GUIStyle digitsStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 42,
+                fontSize = 50,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(1.0f, 0.92f, 0.28f) }
+                normal = { textColor = new Color(1.0f, 0.92f, 0.25f) }
             };
-            GUI.Label(new Rect(codeBoxX + 10, codeBoxY + 38, codeBoxWidth - 20, 68), FormattedCode, digitsStyle);
+            GUI.Label(new Rect(codeBoxX + 6, codeBoxY + 8, codeBoxWidth - 12, codeBoxHeight - 16), CurrentCode, digitsStyle);
 
             // 8. Close Button
             float btnWidth = 180f;
             float btnHeight = 36f;
             float btnX = panelX + (panelWidth - btnWidth) * 0.5f;
-            float btnY = panelY + panelHeight - 52f;
+            float btnY = panelY + panelHeight - 50f;
 
             GUIStyle btnStyle = new GUIStyle(GUI.skin.button)
             {
