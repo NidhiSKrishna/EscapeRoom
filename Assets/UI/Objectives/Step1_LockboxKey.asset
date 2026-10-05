@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Step1_LockboxKey
   m_EditorClassIdentifier: Assembly-CSharp::EscapeRoom.Core.ObjectiveStep
   stepTitle: Lockbox Key
-  instruction: Find the Lockbox Key on the shelf.
+  instruction: Find the lockbox key
   completionFlag: LOCKBOX_KEY_ACQUIRED
   roomIdentifier: Attic

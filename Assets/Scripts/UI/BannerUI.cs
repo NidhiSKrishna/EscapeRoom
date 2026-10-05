@@ -114,13 +114,13 @@ namespace EscapeRoom.UI
             GUI.DrawTexture(new Rect(bannerX + 20, bannerY, bannerW - 40, 2), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(bannerX + 20, bannerY + bannerH - 2, bannerW - 40, 2), Texture2D.whiteTexture);
 
-            // Title Label (Large, bold, gold)
+            // Title Label (Large, bold, white)
             var titleStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 28,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.98f, 0.86f, 0.30f, currentAlpha) }
+                normal = { textColor = new Color(1.0f, 1.0f, 1.0f, currentAlpha) }
             };
             GUI.color = Color.white;
             GUI.Label(new Rect(bannerX + 10, bannerY + 12, bannerW - 20, 40), currentTitle, titleStyle);
@@ -131,7 +131,7 @@ namespace EscapeRoom.UI
                 fontSize = 14,
                 fontStyle = FontStyle.Italic,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.85f, 0.90f, 0.95f, currentAlpha * 0.9f) }
+                normal = { textColor = new Color(1.0f, 1.0f, 1.0f, currentAlpha * 0.9f) }
             };
             GUI.Label(new Rect(bannerX + 15, bannerY + 54, bannerW - 30, 40), currentTip, tipStyle);
 

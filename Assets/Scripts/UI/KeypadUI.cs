@@ -147,6 +147,9 @@ namespace EscapeRoom.UI
             if (currentInput.Length < maxLen)
             {
                 currentInput += digit;
+                // ── Digit beep ───────────────────────────────────────────────
+                EscapeRoom.Audio.EscapeRoomAudio.Play(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.KeypadDigit, 0.8f);
             }
         }
 
@@ -171,6 +174,10 @@ namespace EscapeRoom.UI
             bool accepted = activeKeypad.SubmitCode(currentInput);
             if (accepted)
             {
+                // ── Correct code sound ────────────────────────────────────────
+                EscapeRoom.Audio.EscapeRoomAudio.Play(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.KeypadCorrect);
+
                 statusMessage = "ACCESS GRANTED";
                 statusColor = new Color(0.3f, 1f, 0.4f);
                 statusResetTimer = 2.0f;
@@ -179,6 +186,10 @@ namespace EscapeRoom.UI
             }
             else
             {
+                // ── Wrong code sound ──────────────────────────────────────────
+                EscapeRoom.Audio.EscapeRoomAudio.Play(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.KeypadWrong);
+
                 statusMessage = "ACCESS DENIED";
                 statusColor = new Color(1f, 0.3f, 0.3f);
                 statusResetTimer = 1.5f;
@@ -289,7 +300,7 @@ namespace EscapeRoom.UI
                 fontSize = 13,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.9f, 0.9f, 0.9f) }
+                normal = { textColor = Color.white }
             };
 
             if (GUI.Button(new Rect(panelX + 35, panelY + panelHeight - 48, panelWidth - 70, 32), "Close (ESC)", closeStyle))

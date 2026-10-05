@@ -113,6 +113,7 @@ namespace EscapeRoom.Player
                 (EscapeRoom.UI.AtticBriefingUI.IsBriefingOpen) ||
                 (EscapeRoom.UI.PhoneIntroUI.IsIntroOpen) ||
                 (EscapeRoom.UI.ObjectiveHUD.IsExpandedViewOpen) ||
+                (EscapeRoom.UI.ExitCodeDisplayUI.IsDisplayOpen) ||
                 (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) ||
                 (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped))
             {

@@ -939,22 +939,24 @@ namespace EscapeRoom.Editor
                 Debug.LogError("<color=#d9534f>[FAIL]</color> AtticBriefingUI missing from scene.");
             }
 
-            // 34. ObjectiveStep Assets & 7 Unique Completion Flags Check
+            // 34. ObjectiveStep Assets — 7 total, 4 currently active
             totalCount++;
             var objectiveSteps = GuidedEscapeRoomSetup.EnsureObjectiveAssets();
-            bool sevenSteps = objectiveSteps != null && objectiveSteps.Length == 7;
-            bool uniqueFlags = sevenSteps && objectiveSteps.Select(s => s.CompletionFlag).Distinct().Count() == 7;
-            if (sevenSteps && uniqueFlags)
+            var activeSteps    = GuidedEscapeRoomSetup.GetActiveSteps(objectiveSteps);
+            bool sevenSteps   = objectiveSteps != null && objectiveSteps.Length == 7;
+            bool fourActive   = activeSteps    != null && activeSteps.Length == GuidedEscapeRoomSetup.ActiveStepCount;
+            bool uniqueFlags  = sevenSteps && objectiveSteps.Select(s => s.CompletionFlag).Distinct().Count() == 7;
+            if (sevenSteps && fourActive && uniqueFlags)
             {
-                Debug.Log($"<color=#5cb85c>[PASS]</color> Exactly 7 ordered ObjectiveStep assets verified in '{GuidedEscapeRoomSetup.ObjectivesFolder}' with unique completion flags: {string.Join(", ", objectiveSteps.Select(s => s.CompletionFlag))}.");
+                Debug.Log($"<color=#5cb85c>[PASS]</color> 7 ObjectiveStep assets verified in '{GuidedEscapeRoomSetup.ObjectivesFolder}'. Active steps: {GuidedEscapeRoomSetup.ActiveStepCount}/7 — flags: {string.Join(", ", activeSteps.Select(s => s.CompletionFlag))}.");
                 passCount++;
             }
             else
             {
-                Debug.LogError($"<color=#d9534f>[FAIL]</color> ObjectiveStep assets invalid! Count: {objectiveSteps?.Length} (expected 7), Unique flags: {uniqueFlags}.");
+                Debug.LogError($"<color=#d9534f>[FAIL]</color> ObjectiveStep assets invalid! Total: {objectiveSteps?.Length} (need 7), Active: {activeSteps?.Length} (need {GuidedEscapeRoomSetup.ActiveStepCount}), UniqueFlags: {uniqueFlags}.");
             }
 
-            // 35. ObjectiveManager Check
+            // 35. ObjectiveManager Check — expects ActiveStepCount (4) active steps
             totalCount++;
             ObjectiveManager objMgr = Object.FindAnyObjectByType<ObjectiveManager>();
             if (objMgr == null)
@@ -963,25 +965,26 @@ namespace EscapeRoom.Editor
                 if (gmGo != null)
                 {
                     objMgr = gmGo.AddComponent<ObjectiveManager>();
-                    objMgr.SetSteps(objectiveSteps);
+                    objMgr.SetSteps(GuidedEscapeRoomSetup.GetActiveSteps(objectiveSteps));
                 }
             }
-            if (objMgr != null && objMgr.TotalSteps == 7)
+            int expectedActive = GuidedEscapeRoomSetup.ActiveStepCount;
+            if (objMgr != null && objMgr.TotalSteps == expectedActive)
             {
-                Debug.Log("<color=#5cb85c>[PASS]</color> ObjectiveManager verified on GameManagers with 7 configured steps.");
+                Debug.Log($"<color=#5cb85c>[PASS]</color> ObjectiveManager verified on GameManagers with {expectedActive} active steps (STEP 1/{expectedActive} HUD display).");
                 passCount++;
             }
             else
             {
-                if (objMgr != null && objectiveSteps != null)
+                if (objMgr != null && activeSteps != null)
                 {
-                    objMgr.SetSteps(objectiveSteps);
-                    Debug.Log("<color=#5cb85c>[PASS]</color> ObjectiveManager steps updated to 7 steps.");
+                    objMgr.SetSteps(GuidedEscapeRoomSetup.GetActiveSteps(objectiveSteps));
+                    Debug.Log($"<color=#5cb85c>[PASS]</color> ObjectiveManager updated to {expectedActive} active steps.");
                     passCount++;
                 }
                 else
                 {
-                    Debug.LogError("<color=#d9534f>[FAIL]</color> ObjectiveManager missing or has incorrect step count.");
+                    Debug.LogError($"<color=#d9534f>[FAIL]</color> ObjectiveManager missing or has wrong step count (expected {expectedActive}, got {objMgr?.TotalSteps}).");
                 }
             }
 
@@ -1096,7 +1099,44 @@ namespace EscapeRoom.Editor
                 Debug.LogError("<color=#d9534f>[FAIL]</color> Attic gameplay objective flags mismatch!");
             }
 
+            // 42. ExitCodeDisplayUI Check
+            totalCount++;
+            ExitCodeDisplayUI exitCodeUI = Object.FindAnyObjectByType<ExitCodeDisplayUI>();
+            if (exitCodeUI == null)
+            {
+                var gmGo = GameObject.Find(PuzzleBuilder.GameManagersName);
+                if (gmGo != null) exitCodeUI = gmGo.AddComponent<ExitCodeDisplayUI>();
+            }
+            if (exitCodeUI != null)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> ExitCodeDisplayUI verified: full-screen code panel auto-shows on lockbox open, fires EXIT_NOTE_READ, closes on E/ESC with cursor + look restore.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> ExitCodeDisplayUI missing from scene. Add it to GameManagers.");
+            }
+
+            // 43. EscapeRoomAudio Check
+            totalCount++;
+            EscapeRoom.Audio.EscapeRoomAudio audioMgr = Object.FindAnyObjectByType<EscapeRoom.Audio.EscapeRoomAudio>();
+            if (audioMgr == null)
+            {
+                var gmGo = GameObject.Find(PuzzleBuilder.GameManagersName);
+                if (gmGo != null) audioMgr = gmGo.AddComponent<EscapeRoom.Audio.EscapeRoomAudio>();
+            }
+            if (audioMgr != null)
+            {
+                Debug.Log("<color=#5cb85c>[PASS]</color> EscapeRoomAudio verified: procedural audio manager active on GameManagers.");
+                passCount++;
+            }
+            else
+            {
+                Debug.LogError("<color=#d9534f>[FAIL]</color> EscapeRoomAudio missing from scene. Add it to GameManagers.");
+            }
+
             // Save scene if any auto-fixes modified dirty state
+
             var activeScn = EditorSceneManager.GetActiveScene();
             if (activeScn.isDirty)
             {

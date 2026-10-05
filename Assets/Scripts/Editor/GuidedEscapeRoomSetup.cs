@@ -22,7 +22,43 @@ namespace EscapeRoom.Editor
     {
         public const string MainMenuScenePath = "Assets/Scenes/MainMenu.unity";
         public const string MainScenePath = "Assets/Scenes/EscapeRoom_Main.unity";
+        public const string StorageScenePath = "Assets/Scenes/StorageRoom.unity";
         public const string ObjectivesFolder = "Assets/UI/Objectives";
+
+        static GuidedEscapeRoomSetup()
+        {
+            // Ensure Unity Play Mode always starts from MainMenu.unity
+            EditorApplication.delayCall += () =>
+            {
+                var mainMenuAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(MainMenuScenePath);
+                if (mainMenuAsset != null && EditorSceneManager.playModeStartScene != mainMenuAsset)
+                {
+                    EditorSceneManager.playModeStartScene = mainMenuAsset;
+                    Debug.Log($"[GuidedEscapeRoomSetup] Set Play Mode Start Scene to '{MainMenuScenePath}'.");
+                }
+            };
+        }
+
+        /// <summary>
+        /// Number of objective steps currently playable.
+        /// Steps beyond this index exist as assets for future rooms but are NOT
+        /// loaded into ObjectiveManager until those rooms are implemented.
+        /// Increase to 7 when Storage Room + Cellar gameplay is complete.
+        /// </summary>
+        public const int ActiveStepCount = 4;
+
+        /// <summary>
+        /// Returns a slice of allSteps containing only the currently active steps (first ActiveStepCount).
+        /// Pass this to ObjectiveManager.SetSteps(), not the full 7-step array.
+        /// </summary>
+        public static ObjectiveStep[] GetActiveSteps(ObjectiveStep[] allSteps = null)
+        {
+            if (allSteps == null) allSteps = EnsureObjectiveAssets();
+            int count = Mathf.Min(ActiveStepCount, allSteps.Length);
+            var active = new ObjectiveStep[count];
+            System.Array.Copy(allSteps, active, count);
+            return active;
+        }
 
         [MenuItem("Tools/Escape Room/Setup Guided Flow & Objectives", false, 30)]
         public static void RunFullSetup()
@@ -40,6 +76,13 @@ namespace EscapeRoom.Editor
 
             // 4. Setup EscapeRoom_Main scene
             EnsureEscapeRoomMainSetup(steps);
+
+            // 5. Configure playModeStartScene
+            var mainMenuAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(MainMenuScenePath);
+            if (mainMenuAsset != null)
+            {
+                EditorSceneManager.playModeStartScene = mainMenuAsset;
+            }
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -60,13 +103,15 @@ namespace EscapeRoom.Editor
 
             var stepDefs = new (string filename, string title, string instruction, string flag, string room)[]
             {
-                ("Step1_LockboxKey", "Lockbox Key", "Find the Lockbox Key on the shelf.", "LOCKBOX_KEY_ACQUIRED", "Attic"),
-                ("Step2_OpenLockbox", "Open Lockbox", "Use the Lockbox Key to open the lockbox.", "LOCKBOX_OPENED", "Attic"),
-                ("Step3_ExitNote", "Exit Code Note", "Read the Exit Code Note inside the lockbox.", "EXIT_NOTE_READ", "Attic"),
-                ("Step4_KeypadCode", "Exit Keypad", "Enter the code from the note on the exit keypad.", "EXIT_CODE_ACCEPTED", "Attic"),
-                ("Step5_StorageKeycard", "Storage Keycard", "Search the storage room and find the keycard.", "KEYCARD_ACQUIRED", "Storage Room"),
-                ("Step6_SecurityReader", "Security Reader", "Use the keycard on the security reader to reach the cellar.", "CELLAR_UNLOCKED", "Cellar"),
-                ("Step7_FinalExit", "Final Exit", "Find the key in the crate and unlock the final exit.", "FINAL_EXIT_UNLOCKED", "Cellar")
+                // ── Currently active Attic steps (shown in HUD as STEP 1-4 / 4) ──
+                ("Step1_LockboxKey",    "Lockbox Key",    "Find the lockbox key",          "LOCKBOX_KEY_ACQUIRED", "Attic"),
+                ("Step2_OpenLockbox",   "Open Lockbox",   "Unlock and open the lockbox",   "LOCKBOX_OPENED",       "Attic"),
+                ("Step3_ExitNote",      "Exit Code Note", "Read the Exit Code Note",       "EXIT_NOTE_READ",       "Attic"),
+                ("Step4_KeypadCode",    "Exit Keypad",    "Enter the code on the keypad",  "EXIT_CODE_ACCEPTED",   "Attic"),
+                // ── Future room steps (assets preserved, NOT active yet) ──────────
+                ("Step5_StorageKeycard","Storage Keycard","Search the storage room and find the keycard.",          "KEYCARD_ACQUIRED",    "Storage Room"),
+                ("Step6_SecurityReader","Security Reader","Use the keycard on the security reader to reach the cellar.", "CELLAR_UNLOCKED","Cellar"),
+                ("Step7_FinalExit",     "Final Exit",     "Find the key in the crate and unlock the final exit.",  "FINAL_EXIT_UNLOCKED", "Cellar")
             };
 
             ObjectiveStep[] result = new ObjectiveStep[stepDefs.Length];
@@ -147,17 +192,42 @@ namespace EscapeRoom.Editor
             }
         }
 
+        public const string VaultScenePath = "Assets/Scenes/VaultCellar.unity";
+
+        [MenuItem("Tools/Escape Room/Build & Setup All Scenes", false, 1)]
+        public static void SetupAll()
+        {
+            Debug.Log("<b><color=#337ab7>[GuidedEscapeRoomSetup]</color> Building all scenes and setting up guided flow...</b>");
+            StorageRoomSceneBuilder.BuildStorageRoomScene();
+            VaultSceneBuilder.BuildVaultScene();
+            RunFullSetup();
+        }
+
         public static void UpdateBuildSettings()
         {
-            var newScenes = new EditorBuildSettingsScene[]
+            var scenesList = new System.Collections.Generic.List<EditorBuildSettingsScene>
             {
                 new EditorBuildSettingsScene(MainMenuScenePath, true),
-                new EditorBuildSettingsScene(MainScenePath, true),
-                new EditorBuildSettingsScene(SceneHousekeeper.SampleScenePath, false)
+                new EditorBuildSettingsScene(MainScenePath, true)
             };
 
-            EditorBuildSettings.scenes = newScenes;
-            Debug.Log("[GuidedEscapeRoomSetup] Build Settings updated: 0 -> MainMenu (enabled), 1 -> EscapeRoom_Main (enabled).");
+            if (File.Exists(StorageScenePath))
+            {
+                scenesList.Add(new EditorBuildSettingsScene(StorageScenePath, true));
+            }
+
+            if (File.Exists(VaultScenePath))
+            {
+                scenesList.Add(new EditorBuildSettingsScene(VaultScenePath, true));
+            }
+
+            if (File.Exists(SceneHousekeeper.SampleScenePath))
+            {
+                scenesList.Add(new EditorBuildSettingsScene(SceneHousekeeper.SampleScenePath, false));
+            }
+
+            EditorBuildSettings.scenes = scenesList.ToArray();
+            Debug.Log("[GuidedEscapeRoomSetup] Build Settings updated: 0 -> MainMenu, 1 -> EscapeRoom_Main, 2 -> StorageRoom, 3 -> VaultCellar.");
         }
 
         public static void EnsureEscapeRoomMainSetup(ObjectiveStep[] steps = null)
@@ -221,14 +291,56 @@ namespace EscapeRoom.Editor
                 sceneModified = true;
             }
 
-            // ObjectiveManager
+            // PlaythroughGameState — centralized single-playthrough randomizer
+            if (managersGo.GetComponent<PlaythroughGameState>() == null)
+            {
+                managersGo.AddComponent<PlaythroughGameState>();
+                sceneModified = true;
+            }
+
+            // InputConfig — centralized interaction key configuration
+            if (managersGo.GetComponent<InputConfig>() == null)
+            {
+                managersGo.AddComponent<InputConfig>();
+                sceneModified = true;
+            }
+
+            // EscapeRoomAudio — central procedural audio manager
+            if (managersGo.GetComponent<EscapeRoom.Audio.EscapeRoomAudio>() == null)
+            {
+                managersGo.AddComponent<EscapeRoom.Audio.EscapeRoomAudio>();
+                sceneModified = true;
+            }
+
+            // CipherHostUI — digital guide host
+            if (managersGo.GetComponent<CipherHostUI>() == null)
+            {
+                managersGo.AddComponent<CipherHostUI>();
+                sceneModified = true;
+            }
+
+            // StageTimer — stage countdown timer
+            if (managersGo.GetComponent<StageTimer>() == null)
+            {
+                managersGo.AddComponent<StageTimer>();
+                sceneModified = true;
+            }
+
+            // TimeoutUI — time expired modal
+            if (managersGo.GetComponent<TimeoutUI>() == null)
+            {
+                managersGo.AddComponent<TimeoutUI>();
+                sceneModified = true;
+            }
+
+            // ObjectiveManager — loaded with ACTIVE steps only (first ActiveStepCount)
             var om = managersGo.GetComponent<ObjectiveManager>();
             if (om == null)
             {
                 om = managersGo.AddComponent<ObjectiveManager>();
                 sceneModified = true;
             }
-            om.SetSteps(steps);
+            om.SetSteps(GetActiveSteps(steps)); // ← Only 4 steps active; future steps preserved as assets
             EditorUtility.SetDirty(om);
 
             // ObjectiveProgressionAdapter
@@ -332,6 +444,14 @@ namespace EscapeRoom.Editor
                 var rbt = cellarTrigGo.AddComponent<RoomBannerTrigger>();
                 rbt.RoomTitle = "THE CELLAR";
                 rbt.TipText = "Find the key. This is your final way out.";
+                sceneModified = true;
+            }
+
+            // 4. Ensure BlurLight_Anomaly (guide ball) GameObject is removed if present
+            GameObject blurLightGo = GameObject.Find("BlurLight_Anomaly");
+            if (blurLightGo != null)
+            {
+                Undo.DestroyObjectImmediate(blurLightGo);
                 sceneModified = true;
             }
 

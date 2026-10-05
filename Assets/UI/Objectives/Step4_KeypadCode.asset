@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Step4_KeypadCode
   m_EditorClassIdentifier: Assembly-CSharp::EscapeRoom.Core.ObjectiveStep
   stepTitle: Exit Keypad
-  instruction: Enter the code from the note on the exit keypad.
+  instruction: Enter the code on the keypad
   completionFlag: EXIT_CODE_ACCEPTED
   roomIdentifier: Attic

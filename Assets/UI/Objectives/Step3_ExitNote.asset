@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Step3_ExitNote
   m_EditorClassIdentifier: Assembly-CSharp::EscapeRoom.Core.ObjectiveStep
   stepTitle: Exit Code Note
-  instruction: Read the Exit Code Note inside the lockbox.
+  instruction: Read the Exit Code Note
   completionFlag: EXIT_NOTE_READ
   roomIdentifier: Attic

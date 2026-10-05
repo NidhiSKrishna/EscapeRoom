@@ -185,17 +185,18 @@ namespace EscapeRoom.Interaction
 
         private void HandleInteractionInput()
         {
-            var keyboard = Keyboard.current;
-            bool ePressed = keyboard != null && keyboard.eKey.wasPressedThisFrame;
+            bool interactPressed = EscapeRoom.Core.InputConfig.IsInteractPressedThisFrame() ||
+                                  EscapeRoom.Core.InputConfig.IsOpenPressedThisFrame() ||
+                                  EscapeRoom.Core.InputConfig.IsUsePressedThisFrame();
 
-            if (ePressed)
+            if (interactPressed)
             {
                 if (showInteractionDebug)
                 {
                     string targetName = currentInteractable != null ? currentInteractable.GetType().Name : "None";
                     bool canInteract = currentInteractable != null && currentInteractable.CanInteract;
                     bool suppressed = ShouldSuppressInteraction();
-                    Debug.Log($"[InteractionSystem] 'E' pressed. Target: {targetName}, CanInteract: {canInteract}, Suppressed: {suppressed}");
+                    Debug.Log($"[InteractionSystem] Interaction key pressed. Target: {targetName}, CanInteract: {canInteract}, Suppressed: {suppressed}");
                 }
 
                 if (!ShouldSuppressInteraction())
@@ -212,6 +213,10 @@ namespace EscapeRoom.Interaction
         {
             if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return true;
             if (ClueInteractable.IsAnyClueOpen) return true;
+            // Stage 2 UI suppression
+            if (EscapeRoom.Interaction.SymbolClueInteractable.IsAnyClueOpen) return true;
+            var cabinet = FindAnyObjectByType<EscapeRoom.Puzzle.SymbolCombinationCabinet>();
+            if (cabinet != null && cabinet.IsUIOpen) return true;
             if (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) return true;
             if (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped) return true;
             return false;

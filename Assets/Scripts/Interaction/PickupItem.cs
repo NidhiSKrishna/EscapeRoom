@@ -39,7 +39,7 @@ namespace EscapeRoom.Interaction
         public string ItemId => itemData != null ? itemData.ItemId : fallbackItemId;
         public string ItemDisplayName => itemData != null ? itemData.DisplayName : fallbackDisplayName;
 
-        public string InteractionPrompt => string.Format(promptFormat, ItemDisplayName);
+        public string InteractionPrompt => $"[{EscapeRoom.Core.InputConfig.InteractKeyName}] Pick up {ItemDisplayName}";
         public bool CanInteract => !isCollected && gameObject.activeInHierarchy;
 
         public void ConfigureItem(string id, string displayName, string description = "")
@@ -83,6 +83,11 @@ namespace EscapeRoom.Interaction
             {
                 isCollected = true;
                 Debug.Log($"<color=#5cb85c><b>[PickupItem]</b></color> Successfully collected '{ItemDisplayName}'.");
+
+                // Play pickup sound
+                EscapeRoom.Audio.EscapeRoomAudio.PlayAt(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.KeyPickup,
+                    transform.position);
 
                 if (destroyOnPickup)
                 {
