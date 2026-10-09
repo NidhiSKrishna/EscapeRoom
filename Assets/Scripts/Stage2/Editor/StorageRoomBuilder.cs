@@ -35,6 +35,31 @@ namespace EscapeRoom.Stage2.Editor
         private const string LightingContainerName = "Lighting";
         private const string ManagersContainerName = "Stage2_Managers";
 
+        [MenuItem("Tools/Escape Room/Stage 2/Open Storage Room Scene", false, 90)]
+        public static void OpenStorageRoomMenu()
+        {
+            if (EditorApplication.isPlaying)
+            {
+                EditorApplication.isPlaying = false;
+            }
+            // Clear Play Mode Start Scene so clicking Play will stay in StorageRoom
+            EditorSceneManager.playModeStartScene = null;
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+                EnsureSceneInBuildSettings(ScenePath);
+                Debug.Log($"<color=#5cb85c>[StorageRoomBuilder]</color> Successfully opened '{ScenePath}' and cleared Play Mode Start Scene.");
+            }
+        }
+
+        [MenuItem("Tools/Escape Room/Stage 2/Disable Play Mode Start Scene (Play Storage Room Directly)", false, 95)]
+        public static void DisablePlayModeStartSceneMenu()
+        {
+            EditorSceneManager.playModeStartScene = null;
+            EnsureSceneInBuildSettings(ScenePath);
+            Debug.Log("<color=#5cb85c><b>[Stage 2]</b> Play Mode Start Scene cleared!</color> Unity will now run whichever scene is open in the Hierarchy (StorageRoom).");
+        }
+
         [MenuItem("Tools/Escape Room/Stage 2/Build Storage Room Scene", false, 100)]
         public static void BuildStorageRoomMenu()
         {

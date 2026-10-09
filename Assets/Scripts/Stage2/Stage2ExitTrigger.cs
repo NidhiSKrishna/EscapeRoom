@@ -132,7 +132,11 @@ namespace EscapeRoom.Stage2
             else
             {
                 // Standalone reload
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                var active = SceneManager.GetActiveScene();
+                if (active.buildIndex >= 0)
+                    SceneManager.LoadScene(active.buildIndex);
+                else
+                    SceneManager.LoadScene(active.name);
             }
         }
 
@@ -234,7 +238,11 @@ namespace EscapeRoom.Stage2
             if (GUI.Button(new Rect(winX + 24, curY, btnW, btnH), "REPLAY STAGE 2", actionBtnStyle))
             {
                 Stage2Audio.Instance?.PlayButtonPress();
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                var active = SceneManager.GetActiveScene();
+                if (active.buildIndex >= 0)
+                    SceneManager.LoadScene(active.buildIndex);
+                else
+                    SceneManager.LoadScene(active.name);
             }
 
             string nextLabel = string.IsNullOrEmpty(nextSceneName) ? "CONTINUE [STAGE COMPLETE]" : "CONTINUE TO NEXT STAGE";

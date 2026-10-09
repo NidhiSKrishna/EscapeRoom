@@ -96,7 +96,11 @@ namespace EscapeRoom.Stage2
 
         private void ReloadStage()
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            var active = SceneManager.GetActiveScene();
+            if (active.buildIndex >= 0)
+                SceneManager.LoadScene(active.buildIndex);
+            else
+                SceneManager.LoadScene(active.name);
         }
 
         private void OnGUI()
