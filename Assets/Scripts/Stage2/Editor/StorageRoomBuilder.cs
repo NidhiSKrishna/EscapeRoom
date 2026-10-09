@@ -351,6 +351,7 @@ namespace EscapeRoom.Stage2.Editor
             alarmEvent.SirenLights = alarmLights.ToArray();
 
             Stage2Timer timer = managersGo.AddComponent<Stage2Timer>();
+            Stage2IntroUI introUI = managersGo.AddComponent<Stage2IntroUI>();
 
             ObjectiveManager objManager = managersGo.AddComponent<ObjectiveManager>();
             var objectiveSteps = Stage2ObjectiveSetup.EnsureStage2ObjectiveAssets();
