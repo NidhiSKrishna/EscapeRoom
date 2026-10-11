@@ -40,6 +40,9 @@ namespace EscapeRoom.Interaction
             ClueInteractable.OnAnyClueOpened += HandleClueOpened;
             KeypadController.OnAnyCodeAccepted += HandleCodeAccepted;
 
+            // Subscribe to exit code display — fires EXIT_NOTE_READ when on-screen code panel opens
+            EscapeRoom.UI.ExitCodeDisplayUI.OnCodeDisplayed += HandleCodeDisplayed;
+
             // Subscribe to inventory changes
             if (InventorySystem.Instance != null)
             {
@@ -52,6 +55,7 @@ namespace EscapeRoom.Interaction
             LockedContainer.OnAnyContainerOpened -= HandleContainerOpened;
             ClueInteractable.OnAnyClueOpened -= HandleClueOpened;
             KeypadController.OnAnyCodeAccepted -= HandleCodeAccepted;
+            EscapeRoom.UI.ExitCodeDisplayUI.OnCodeDisplayed -= HandleCodeDisplayed;
 
             if (InventorySystem.Instance != null)
             {
@@ -97,6 +101,14 @@ namespace EscapeRoom.Interaction
 
         private void HandleClueOpened()
         {
+            NotifyExitNoteRead();
+        }
+
+        private void HandleCodeDisplayed()
+        {
+            // The on-screen EXIT KEYPAD CODE panel has been shown — treat as EXIT_NOTE_READ.
+            // Safe to call even if ClueInteractable also fires later: ObjectiveManager.CompleteFlag
+            // silently ignores already-completed flags.
             NotifyExitNoteRead();
         }
 

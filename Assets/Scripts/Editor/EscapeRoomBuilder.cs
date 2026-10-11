@@ -133,11 +133,14 @@ namespace EscapeRoom.Editor
             }
 
             // Repaint Scene View and update selection
-            Selection.activeGameObject = root;
-            EditorGUIUtility.PingObject(root);
+            if (!Application.isBatchMode)
+            {
+                Selection.activeGameObject = root;
+                EditorGUIUtility.PingObject(root);
+                ProBuilderEditor.Refresh(false);
+                SceneView.RepaintAll();
+            }
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
-            ProBuilderEditor.Refresh(false);
-            SceneView.RepaintAll();
 
             Debug.Log($"<color=#5cb85c><b>[EscapeRoomBuilder]</b></color> Prototype room successfully generated! " +
                       $"Dimensions: {config.length:F1}m L x {config.width:F1}m W x {config.height:F1}m H | Wall Thickness: {config.wallThickness:F2}m.");

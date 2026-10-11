@@ -84,8 +84,8 @@ namespace EscapeRoom.Puzzle
             get
             {
                 if (isOpen) return openedPrompt;
-                if (isLocked) return lockedPrompt;
-                return unlockPrompt;
+                if (isLocked) return "Press O to Open Exit Door (Locked)";
+                return "Press O to Open Exit Door";
             }
         }
 
@@ -123,6 +123,12 @@ namespace EscapeRoom.Puzzle
 
             isLocked = false;
             Debug.Log($"<color=#5cb85c><b>[DoorController]</b></color> '{gameObject.name}' unlocked!");
+
+            // ── Door unlock sound ─────────────────────────────────────────────
+            EscapeRoom.Audio.EscapeRoomAudio.PlayAt(
+                EscapeRoom.Audio.EscapeRoomAudio.SoundId.DoorUnlock,
+                transform.position);
+
             FeedbackHUD.ShowMessage("Exit Door Unlocked!", new Color(0.40f, 0.95f, 0.45f));
             onDoorUnlocked?.Invoke();
 
@@ -153,6 +159,11 @@ namespace EscapeRoom.Puzzle
             {
                 StopCoroutine(swingCoroutine);
             }
+
+            // ── Door open sound ───────────────────────────────────────────────
+            EscapeRoom.Audio.EscapeRoomAudio.PlayAt(
+                EscapeRoom.Audio.EscapeRoomAudio.SoundId.DoorOpen,
+                transform.position);
 
             if (gameObject.activeInHierarchy)
             {

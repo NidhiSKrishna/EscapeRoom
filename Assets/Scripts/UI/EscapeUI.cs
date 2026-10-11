@@ -127,7 +127,7 @@ namespace EscapeRoom.UI
                 fontSize = 32,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.98f, 0.85f, 0.25f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(panelX, panelY + 35f, panelWidth, 48), "YOU ESCAPED", titleStyle);
 
@@ -137,7 +137,7 @@ namespace EscapeRoom.UI
                 fontSize = 14,
                 fontStyle = FontStyle.Normal,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.85f, 0.90f, 0.95f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(panelX + 20, panelY + 95f, panelWidth - 40, 40),
                 "Congratulations! You solved all the puzzles and unlocked the facility exit.", subStyle);
@@ -155,7 +155,8 @@ namespace EscapeRoom.UI
             {
                 fontSize = 16,
                 fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = Color.white }
             };
 
             GUI.backgroundColor = new Color(0.20f, 0.70f, 0.35f);
@@ -169,7 +170,8 @@ namespace EscapeRoom.UI
             {
                 fontSize = 14,
                 fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = Color.white }
             };
             if (GUI.Button(new Rect(btnX, panelY + 230f, btnW, 36f), "MAIN MENU", menuStyle))
             {

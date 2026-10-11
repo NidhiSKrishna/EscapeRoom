@@ -89,7 +89,7 @@ namespace EscapeRoom.UI
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
 
             float panelWidth = 320f;
-            float panelHeight = 280f;
+            float panelHeight = 330f;
             float panelX = (Screen.width - panelWidth) * 0.5f;
             float panelY = (Screen.height - panelHeight) * 0.5f;
 
@@ -144,9 +144,26 @@ namespace EscapeRoom.UI
                 OnRestartClicked();
             }
 
+            // INTERACTION KEY CONFIG
+            string currentKey = InputConfig.InteractKeyName;
+            GUI.backgroundColor = new Color(0.20f, 0.45f, 0.70f);
+            if (GUI.Button(new Rect(btnX, startY + spacing * 2f, btnW, btnH), $"INTERACT KEY: [ {currentKey} ]", btnStyle))
+            {
+                // Toggle between F, E, and Space
+                if (InputConfig.Instance != null)
+                {
+                    if (InputConfig.CurrentInteractKey == UnityEngine.InputSystem.Key.F)
+                        InputConfig.Instance.SetInteractKey(UnityEngine.InputSystem.Key.E);
+                    else if (InputConfig.CurrentInteractKey == UnityEngine.InputSystem.Key.E)
+                        InputConfig.Instance.SetInteractKey(UnityEngine.InputSystem.Key.Space);
+                    else
+                        InputConfig.Instance.SetInteractKey(UnityEngine.InputSystem.Key.F);
+                }
+            }
+
             // MAIN MENU
             GUI.backgroundColor = new Color(0.30f, 0.32f, 0.38f);
-            if (GUI.Button(new Rect(btnX, startY + spacing * 2f, btnW, btnH), "MAIN MENU", btnStyle))
+            if (GUI.Button(new Rect(btnX, startY + spacing * 3f, btnW, btnH), "MAIN MENU", btnStyle))
             {
                 OnMainMenuClicked();
             }

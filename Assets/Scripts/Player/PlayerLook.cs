@@ -166,31 +166,14 @@ namespace EscapeRoom.Player
         private bool CanLockCursor()
         {
             if (IsKeypadOpen()) return false;
-
-            if (EscapeRoom.Interaction.ClueInteractable.IsAnyClueOpen)
-                return false;
-
-            if (EscapeRoom.UI.AtticBriefingUI.IsBriefingOpen)
-                return false;
-
-            if (EscapeRoom.UI.PhoneIntroUI.IsIntroOpen)
-                return false;
-
-            if (EscapeRoom.UI.ObjectiveHUD.IsExpandedViewOpen)
-                return false;
-
-            if (EscapeRoom.Core.PauseManager.Instance != null &&
-                EscapeRoom.Core.PauseManager.Instance.IsPaused)
-                return false;
-
-            if (EscapeRoom.Core.GameManager.Instance != null &&
-                EscapeRoom.Core.GameManager.Instance.HasEscaped)
-                return false;
-
-            if (EscapeRoom.UI.EscapeUI.Instance != null &&
-                EscapeRoom.UI.EscapeUI.Instance.IsOpen)
-                return false;
-
+            if (EscapeRoom.Interaction.ClueInteractable.IsAnyClueOpen) return false;
+            if (EscapeRoom.UI.AtticBriefingUI.IsBriefingOpen) return false;
+            if (EscapeRoom.UI.PhoneIntroUI.IsIntroOpen) return false;
+            if (EscapeRoom.UI.ObjectiveHUD.IsExpandedViewOpen) return false;
+            if (EscapeRoom.UI.ExitCodeDisplayUI.IsDisplayOpen) return false;
+            if (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) return false;
+            if (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped) return false;
+            if (EscapeRoom.UI.EscapeUI.Instance != null && EscapeRoom.UI.EscapeUI.Instance.IsOpen) return false;
             return true;
         }
 

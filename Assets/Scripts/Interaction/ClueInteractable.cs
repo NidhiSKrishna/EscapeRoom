@@ -51,6 +51,12 @@ namespace EscapeRoom.Interaction
         {
             get
             {
+                if (EscapeRoom.Core.PlaythroughGameState.Instance != null &&
+                    !string.IsNullOrEmpty(EscapeRoom.Core.PlaythroughGameState.Instance.Passcode))
+                {
+                    return EscapeRoom.Core.PlaythroughGameState.Instance.Passcode;
+                }
+
                 if (targetKeypad != null && !string.IsNullOrEmpty(targetKeypad.TargetCode))
                 {
                     return targetKeypad.TargetCode;
@@ -101,7 +107,7 @@ namespace EscapeRoom.Interaction
             set => promptText = value;
         }
 
-        public string InteractionPrompt => promptText;
+        public string InteractionPrompt => EscapeRoom.Core.InputConfig.FormatPrompt("Examine Exit Code Note");
         public bool CanInteract => !isReading && gameObject.activeInHierarchy;
         public bool IsReading => isReading;
 
@@ -138,6 +144,7 @@ namespace EscapeRoom.Interaction
             if (keyboard != null)
             {
                 if (keyboard.escapeKey.wasPressedThisFrame ||
+                    keyboard.iKey.wasPressedThisFrame ||
                     keyboard.eKey.wasPressedThisFrame ||
                     keyboard.spaceKey.wasPressedThisFrame)
                 {
@@ -247,7 +254,7 @@ namespace EscapeRoom.Interaction
                 fontSize = 20,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(1.0f, 0.86f, 0.40f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(panelX + 20, panelY + 18, panelWidth - 40, 30), clueTitle, titleStyle);
 
@@ -262,7 +269,7 @@ namespace EscapeRoom.Interaction
                 fontSize = 17,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.88f, 0.92f, 0.98f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(panelX + 20, panelY + 68, panelWidth - 40, 28), "Emergency exit keypad code:", labelStyle);
 
@@ -280,13 +287,13 @@ namespace EscapeRoom.Interaction
             GUI.color = new Color(0.04f, 0.06f, 0.09f, 1.0f);
             GUI.DrawTexture(new Rect(codeBoxX + 2, codeBoxY + 2, codeBoxWidth - 4, codeBoxHeight - 4), Texture2D.whiteTexture);
 
-            // Code Box Big Digits: 8431 (Large, bold, high-contrast gold text)
+            // Code Box Big Digits: 8431 (Large, bold, white text)
             GUIStyle digitsStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 50,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(1.0f, 0.92f, 0.25f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(codeBoxX + 6, codeBoxY + 8, codeBoxWidth - 12, codeBoxHeight - 16), CurrentCode, digitsStyle);
 

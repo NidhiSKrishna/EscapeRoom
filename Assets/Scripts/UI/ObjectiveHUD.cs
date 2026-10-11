@@ -164,6 +164,9 @@ namespace EscapeRoom.UI
         {
             if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return false;
             if (ClueInteractable.IsAnyClueOpen) return false;
+            if (EscapeRoom.Interaction.SymbolClueInteractable.IsAnyClueOpen) return false;
+            var cabinet = FindAnyObjectByType<EscapeRoom.Puzzle.SymbolCombinationCabinet>();
+            if (cabinet != null && cabinet.IsUIOpen) return false;
             if (AtticBriefingUI.IsBriefingOpen) return false;
             if (PhoneIntroUI.IsIntroOpen) return false;
             if (PauseManager.Instance != null && PauseManager.Instance.IsPaused) return false;
@@ -209,6 +212,10 @@ namespace EscapeRoom.UI
             if (AtticBriefingUI.IsBriefingOpen || PhoneIntroUI.IsIntroOpen) return;
             if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return;
             if (ClueInteractable.IsAnyClueOpen) return;
+            // Stage 2 UI guards
+            if (EscapeRoom.Interaction.SymbolClueInteractable.IsAnyClueOpen) return;
+            var cabinet = FindAnyObjectByType<EscapeRoom.Puzzle.SymbolCombinationCabinet>();
+            if (cabinet != null && cabinet.IsUIOpen) return;
             if (PauseManager.Instance != null && PauseManager.Instance.IsPaused) return;
             if (EscapeUI.Instance != null && EscapeUI.Instance.IsOpen) return;
 
@@ -257,7 +264,7 @@ namespace EscapeRoom.UI
                 fontSize = 11,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.98f, 0.82f, 0.25f) }
+                normal = { textColor = Color.white }
             };
 
             var instrStyle = new GUIStyle(GUI.skin.label)
@@ -266,7 +273,7 @@ namespace EscapeRoom.UI
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
-                normal = { textColor = new Color(0.95f, 0.96f, 0.98f) }
+                normal = { textColor = Color.white }
             };
 
             if (om.IsFinalEscaped)
@@ -340,7 +347,7 @@ namespace EscapeRoom.UI
                 fontSize = 22,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.98f, 0.85f, 0.35f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(cardX + 20, cardY + 18, cardW - 40, 32), "ESCAPE ROOM 1", titleStyle);
 
@@ -349,7 +356,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 12,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.65f, 0.70f, 0.75f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(cardX + 20, cardY + 50, cardW - 40, 18), "OBJECTIVE PROGRESSION ([T] or [ESC] to close)", subStyle);
 
@@ -373,22 +380,18 @@ namespace EscapeRoom.UI
                     if (step == null) continue;
 
                     string prefix;
-                    Color textColor;
 
                     if (om.IsAllCompleted || i < currentIdx)
                     {
                         prefix = "✓  ";
-                        textColor = new Color(0.40f, 0.90f, 0.45f); // Completed (Green)
                     }
                     else if (i == currentIdx)
                     {
                         prefix = "→  ";
-                        textColor = new Color(0.98f, 0.85f, 0.25f); // Current (Gold)
                     }
                     else
                     {
                         prefix = "○  ";
-                        textColor = new Color(0.55f, 0.60f, 0.65f); // Upcoming (Dim)
                     }
 
                     var rowStyle = new GUIStyle(GUI.skin.label)
@@ -397,7 +400,7 @@ namespace EscapeRoom.UI
                         fontStyle = (i == currentIdx && !om.IsAllCompleted) ? FontStyle.Bold : FontStyle.Normal,
                         alignment = TextAnchor.MiddleLeft,
                         wordWrap = true,
-                        normal = { textColor = textColor }
+                        normal = { textColor = Color.white }
                     };
 
                     string rowText = $"{prefix}Step {i + 1}: {step.Instruction}";
@@ -415,7 +418,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 13,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.black }
+                normal = { textColor = Color.white }
             };
 
             GUI.backgroundColor = new Color(0.95f, 0.80f, 0.25f, 1f);

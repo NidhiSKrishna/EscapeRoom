@@ -31,8 +31,7 @@ namespace EscapeRoom.UI
             "CONTROLS\n" +
             "WASD - Move\n" +
             "Mouse - Look\n" +
-            "E - Interact\n" +
-            "F - Flashlight\n" +
+            "F - Interact & Search\n" +
             "T - Objectives\n" +
             "ESC - Pause / close current panel";
 
@@ -123,6 +122,18 @@ namespace EscapeRoom.UI
             // Trigger room banner
             BannerUI.Instance?.ShowBanner("ATTIC", "Search carefully. Something useful is hidden here.");
 
+            // ── Start the stage timer ──────────────────────────────────────────
+            if (EscapeRoom.UI.StageTimer.Instance != null)
+            {
+                EscapeRoom.UI.StageTimer.Instance.StartTimer();
+            }
+
+            // ── Activate Cipher ────────────────────────────────────────────────
+            if (EscapeRoom.UI.CipherHostUI.Instance != null)
+            {
+                EscapeRoom.UI.CipherHostUI.Instance.Activate();
+            }
+
             Debug.Log("[AtticBriefingUI] BEGIN clicked. Gameplay started, cursor locked, objectives activated.");
         }
 
@@ -160,7 +171,7 @@ namespace EscapeRoom.UI
                 fontSize = 24,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.98f, 0.85f, 0.35f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(cardX + 20, cardY + 20, cardWidth - 40, 36), briefingTitle, titleStyle);
 
@@ -175,7 +186,7 @@ namespace EscapeRoom.UI
                 fontSize = 15,
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
-                normal = { textColor = new Color(0.90f, 0.92f, 0.95f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(cardX + 30, cardY + 75, cardWidth - 60, 70), briefingBody, bodyStyle);
 
@@ -193,7 +204,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 13,
                 alignment = TextAnchor.UpperLeft,
-                normal = { textColor = new Color(0.80f, 0.88f, 0.95f) }
+                normal = { textColor = Color.white }
             };
             GUI.Label(new Rect(boxX + 20, boxY + 12, boxW - 40, boxH - 24), controlsText, controlsStyle);
 
@@ -207,7 +218,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 16,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.black }
+                normal = { textColor = Color.white }
             };
 
             GUI.backgroundColor = new Color(0.98f, 0.82f, 0.25f, 1f);

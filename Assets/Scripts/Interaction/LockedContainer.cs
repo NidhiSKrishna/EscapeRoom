@@ -6,8 +6,11 @@ using EscapeRoom.UI;
 namespace EscapeRoom.Interaction
 {
     /// <summary>
-    /// Interactive container that starts locked and requires a specific item ID (e.g. 'room_key') in inventory to open.
+    /// Interactive container that starts locked and requires a specific item ID (e.g. 'lockbox_key') in inventory to open.
     /// Implements IInteractable.
+    /// Two-step interaction:
+    ///   1st press (locked + key present) → unlock the box, show "BOX UNLOCKED / OPEN THE BOX" messages.
+    ///   2nd press (unlocked but not open) → open lid, reveal contents, show ExitCodeDisplayUI.
     /// Rotates a lid/cover smoothly and reveals contents upon opening.
     /// </summary>
     [RequireComponent(typeof(Collider))]
@@ -43,7 +46,7 @@ namespace EscapeRoom.Interaction
         [Header("Prompts")]
         [SerializeField] private string lockedMissingKeyPrompt = "Locked - requires {0}";
         [SerializeField] private string lockedHaveKeyPrompt = "Press E to unlock with {0}";
-        [SerializeField] private string openPrompt = "Press E to open";
+        [SerializeField] private string unlockedOpenPrompt = "Press E to open";
         [SerializeField] private string openedPrompt = "Container is already open";
 
         [Header("Events")]
@@ -95,15 +98,21 @@ namespace EscapeRoom.Interaction
                     bool hasKey = InventorySystem.Instance != null &&
                         (InventorySystem.Instance.HasItem(requiredItemId) || (requiredItemId == "lockbox_key" && InventorySystem.Instance.HasItem("room_key")));
                     return hasKey
-                        ? string.Format(lockedHaveKeyPrompt, requiredItemName)
-                        : string.Format(lockedMissingKeyPrompt, requiredItemName);
+                        ? $"Press O to Open Lockbox"
+                        : $"Press O to Open Lockbox (Requires {requiredItemName})";
                 }
 
-                return openPrompt;
+                // Unlocked but not yet open
+                return $"Press O to Open Lockbox";
             }
         }
 
+        /// <summary>
+        /// Allow interaction while locked (to unlock) OR while unlocked-but-not-open (to open lid).
+        /// Disallow once fully open.
+        /// </summary>
         public bool CanInteract => !isOpen;
+
 
         private void Awake()
         {
@@ -150,6 +159,7 @@ namespace EscapeRoom.Interaction
 
             if (isLocked)
             {
+                // ── Step 1: Try to unlock ────────────────────────────────────────
                 InventorySystem inventory = InventorySystem.Instance;
                 if (inventory == null)
                 {
@@ -166,28 +176,36 @@ namespace EscapeRoom.Interaction
                     return;
                 }
 
-                // Player holds the required key!
+                // Player holds the required key — unlock only, do NOT open yet.
                 isLocked = false;
                 Debug.Log($"<color=#5cb85c><b>[LockedContainer]</b></color> '{gameObject.name}' unlocked using '{requiredItemId}'!");
-                FeedbackHUD.ShowMessage($"Unlocked container with {requiredItemName}!", new Color(0.40f, 0.90f, 0.45f));
-                onContainerUnlocked?.Invoke();
+
+                // ── Unlock sound ──────────────────────────────────────────────
+                EscapeRoom.Audio.EscapeRoomAudio.PlayAt(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.LockboxUnlock,
+                    transform.position);
+
+                // Show a clear two-part message so the player knows what to do next.
+                FeedbackHUD.ShowMessage("BOX UNLOCKED  ·  Press E again to OPEN", new Color(0.40f, 0.90f, 0.45f));
 
                 if (consumeKey && inventory != null)
                 {
                     if (inventory.HasItem(requiredItemId))
-                    {
                         inventory.RemoveItem(requiredItemId);
-                    }
                     else if (inventory.HasItem("room_key"))
-                    {
                         inventory.RemoveItem("room_key");
-                    }
                 }
+
+                onContainerUnlocked?.Invoke();
+
+                // Do NOT call OpenContainer() here — player must press E again.
+                return;
             }
 
-            // Open the container
+            // ── Step 2: Already unlocked — open the lid ──────────────────────
             OpenContainer();
         }
+
 
         public void OpenContainer()
         {
@@ -226,6 +244,12 @@ namespace EscapeRoom.Interaction
             }
 
             Debug.Log($"<color=#5cb85c><b>[LockedContainer]</b></color> '{gameObject.name}' is now open.");
+
+            // ── Lid-open sound ────────────────────────────────────────────────
+            EscapeRoom.Audio.EscapeRoomAudio.PlayAt(
+                EscapeRoom.Audio.EscapeRoomAudio.SoundId.LockboxOpen,
+                transform.position);
+
             onContainerOpened?.Invoke();
             OnAnyContainerOpened?.Invoke();
         }

@@ -194,7 +194,8 @@ namespace EscapeRoom.UI
             if (currentInput.Length < maxLength)
             {
                 currentInput += digit;
-
+                EscapeRoom.Audio.EscapeRoomAudio.Play(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.KeypadDigit, 0.8f);
                 Debug.Log($"[KeypadUI] Digit entered. Length: {currentInput.Length}");
             }
         }
@@ -225,6 +226,10 @@ namespace EscapeRoom.UI
 
             if (accepted)
             {
+                // ── Correct code sound ────────────────────────────────────────
+                EscapeRoom.Audio.EscapeRoomAudio.Play(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.KeypadCorrect);
+
                 statusMessage = "ACCESS GRANTED";
                 statusColor = new Color(0.3f, 1f, 0.4f);
                 statusResetTimer = 2f;
@@ -233,6 +238,10 @@ namespace EscapeRoom.UI
             }
             else
             {
+                // ── Wrong code sound ──────────────────────────────────────────
+                EscapeRoom.Audio.EscapeRoomAudio.Play(
+                    EscapeRoom.Audio.EscapeRoomAudio.SoundId.KeypadWrong);
+
                 statusMessage = "ACCESS DENIED";
                 statusColor = new Color(1f, 0.3f, 0.3f);
                 statusResetTimer = 1.5f;

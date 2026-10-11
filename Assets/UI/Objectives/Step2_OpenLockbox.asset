@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Step2_OpenLockbox
   m_EditorClassIdentifier: Assembly-CSharp::EscapeRoom.Core.ObjectiveStep
   stepTitle: Open Lockbox
-  instruction: Use the Lockbox Key to open the lockbox.
+  instruction: Unlock and open the lockbox
   completionFlag: LOCKBOX_OPENED
   roomIdentifier: Attic
