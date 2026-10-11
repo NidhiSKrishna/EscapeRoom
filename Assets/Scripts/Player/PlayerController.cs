@@ -112,6 +112,8 @@ namespace EscapeRoom.Player
                 (EscapeRoom.UI.KeypadUI.Instance != null && EscapeRoom.UI.KeypadUI.Instance.IsOpen) ||
                 (EscapeRoom.UI.AtticBriefingUI.IsBriefingOpen) ||
                 (EscapeRoom.UI.PhoneIntroUI.IsIntroOpen) ||
+                (EscapeRoom.Stage2.Stage2IntroUI.IsIntroOpen) ||
+                (EscapeRoom.Stage2.Stage2CipherAdapter.IsDocumentOpen) ||
                 (EscapeRoom.UI.ObjectiveHUD.IsExpandedViewOpen) ||
                 (EscapeRoom.UI.ExitCodeDisplayUI.IsDisplayOpen) ||
                 (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) ||
@@ -129,6 +131,15 @@ namespace EscapeRoom.Player
                 if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) input.y -= 1f;
                 if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) input.x -= 1f;
                 if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) input.x += 1f;
+            }
+
+            // Legacy Input fallback (ensures arrows and WASD work smoothly across all keyboard drivers)
+            if (input == Vector2.zero)
+            {
+                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) input.y += 1f;
+                if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) input.y -= 1f;
+                if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) input.x -= 1f;
+                if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) input.x += 1f;
             }
 
             return input;

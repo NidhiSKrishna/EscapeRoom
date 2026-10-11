@@ -29,12 +29,13 @@ namespace EscapeRoom.Core
         {
             if (instance != null && instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
             instance = this;
 
-            // Reset time scale in case of reload while paused
+            hasEscaped = false;
+            isGameplayActive = true;
             Time.timeScale = 1f;
         }
 

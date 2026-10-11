@@ -31,7 +31,7 @@ namespace EscapeRoom.Core
         {
             if (instance != null && instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
             instance = this;

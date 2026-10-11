@@ -40,11 +40,10 @@ namespace EscapeRoom.Core
         {
             if (instance != null && instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
             instance = this;
-            DontDestroyOnLoad(gameObject);
         }
 
         private void OnDestroy()
