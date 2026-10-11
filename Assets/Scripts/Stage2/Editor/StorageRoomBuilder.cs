@@ -60,6 +60,32 @@ namespace EscapeRoom.Stage2.Editor
             Debug.Log("<color=#5cb85c><b>[Stage 2]</b> Play Mode Start Scene cleared!</color> Unity will now run whichever scene is open in the Hierarchy (StorageRoom).");
         }
 
+        [MenuItem("Tools/Escape Room/Progression/Open Main Menu Scene", false, 110)]
+        public static void OpenMainMenuMenu()
+        {
+            if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;
+            EditorSceneManager.playModeStartScene = null;
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene("Assets/Scenes/MainMenu.unity", OpenSceneMode.Single);
+                Debug.Log("<color=#5cb85c>[Progress Debug]</color> MainMenu scene opened.");
+            }
+        }
+
+        [MenuItem("Tools/Escape Room/Progression/Set Saved Progress to Stage 2 (Storage Room)", false, 120)]
+        public static void SetProgressStage2Menu()
+        {
+            EscapeRoom.Core.GameProgress.SetStageUnlocked(2);
+            Debug.Log("<color=#5cb85c><b>[Progress Debug]</b> Saved progress set to Stage 2!</color> Open MainMenu and click Play to see 'CONTINUE [STAGE 2]'.");
+        }
+
+        [MenuItem("Tools/Escape Room/Progression/Reset Saved Progress to Stage 1 (New Game)", false, 130)]
+        public static void ResetProgressMenu()
+        {
+            EscapeRoom.Core.GameProgress.ResetProgress();
+            Debug.Log("<color=#f0ad4e><b>[Progress Debug]</b> Saved progress reset to Stage 1.</color>");
+        }
+
         [MenuItem("Tools/Escape Room/Stage 2/Build Storage Room Scene", false, 100)]
         public static void BuildStorageRoomMenu()
         {
@@ -269,7 +295,8 @@ namespace EscapeRoom.Stage2.Editor
             spot4.ConfigureSpot(3, "Supply Crate #04");
 
             // Spot 5: Work Table Tool Case
-            GameObject spot5Go = CreateProBuilderCube("Spot_ToolCase", interactParent, new Vector3(-0.6f, 0.95f, 0.8f), new Vector3(0.40f, 0.20f, 0.30f), metalMat);
+            Material redBoxMat = LoadOrCreateMaterial("M_SR_IndicRed", new Color(0.85f, 0.12f, 0.10f), 0.40f, 0.10f);
+            GameObject spot5Go = CreateProBuilderCube("Spot_ToolCase", interactParent, new Vector3(-0.6f, 0.95f, 0.8f), new Vector3(0.40f, 0.20f, 0.30f), redBoxMat);
             spot5Go.name = "Spot_ToolCase";
             BoxCollider sc5 = spot5Go.GetComponent<BoxCollider>();
             if (sc5 == null) sc5 = spot5Go.AddComponent<BoxCollider>();

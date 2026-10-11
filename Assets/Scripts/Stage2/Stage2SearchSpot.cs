@@ -52,6 +52,11 @@ namespace EscapeRoom.Stage2
         public bool CanInteract => canInteract && !HasCollectedTerminalChip;
         public int SpotIndex => spotIndex;
 
+        private void Awake()
+        {
+            CheckAndApplyToolboxVisuals();
+        }
+
         private void Start()
         {
             var gen = Stage2PuzzleGenerator.Instance;
@@ -60,7 +65,31 @@ namespace EscapeRoom.Stage2
                 hasItem = (gen.ValidSearchSpotIndex == spotIndex);
             }
             itemCollected = false;
+            CheckAndApplyToolboxVisuals();
         }
+
+        private void CheckAndApplyToolboxVisuals()
+        {
+            if ((spotName != null && spotName.ToLower().Contains("tool case")) || 
+                (gameObject.name != null && gameObject.name.ToLower().Contains("toolcase")))
+            {
+                var rend = GetComponent<Renderer>();
+                if (rend != null)
+                {
+                    Color redColor = new Color(0.85f, 0.12f, 0.10f, 1f);
+                    Material mat = rend.material;
+                    if (mat != null)
+                    {
+                        mat.color = redColor;
+                        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", redColor);
+                        if (mat.HasProperty("_Color")) mat.SetColor("_Color", redColor);
+                        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.45f);
+                        if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0.25f);
+                    }
+                }
+            }
+        }
+
 
         public void ConfigureSpot(int index, string name)
         {

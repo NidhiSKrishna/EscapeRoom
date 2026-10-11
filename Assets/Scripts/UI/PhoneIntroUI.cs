@@ -62,10 +62,25 @@ namespace EscapeRoom.UI
             var keyboard = Keyboard.current;
             if (keyboard != null)
             {
-                if (keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame)
+                if (keyboard.escapeKey.wasPressedThisFrame)
+                {
+                    OnSkipIntroClicked();
+                    return;
+                }
+                if (keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
                 {
                     OnNextClicked();
+                    return;
                 }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                OnSkipIntroClicked();
+            }
+            else if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                OnNextClicked();
             }
         }
 
@@ -142,6 +157,8 @@ namespace EscapeRoom.UI
         {
             if (!isOpen) return;
 
+            GUI.depth = -100;
+
             Color oldColor = GUI.color;
 
             // Full screen dim background
@@ -158,7 +175,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 13,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white }
+                normal = { textColor = new Color(0.95f, 0.90f, 0.70f) }
             };
 
             GUI.color = Color.white;
@@ -198,7 +215,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 11,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = Color.white }
+                normal = { textColor = new Color(0.60f, 0.65f, 0.70f) }
             };
             GUI.Label(new Rect(phoneX + 15, phoneY + 26, phoneW - 30, 20), "02:47 AM  •  ENCRYPTED CELLULAR", statusStyle);
 
@@ -222,7 +239,7 @@ namespace EscapeRoom.UI
                 fontSize = 15,
                 wordWrap = true,
                 alignment = TextAnchor.UpperLeft,
-                normal = { textColor = Color.white }
+                normal = { textColor = new Color(0.92f, 0.95f, 0.98f) }
             };
 
             string currentText = (storyMessages != null && currentMessageIndex < storyMessages.Length)
@@ -237,7 +254,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 12,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = Color.white }
+                normal = { textColor = new Color(0.60f, 0.65f, 0.70f) }
             };
             GUI.Label(new Rect(phoneX + 20, phoneY + phoneH - 96, phoneW - 40, 20),
                 $"Message {currentMessageIndex + 1} of {totalSlides}", pageStyle);
@@ -247,19 +264,31 @@ namespace EscapeRoom.UI
             float btnH = 42f;
             float btnX = phoneX + 30f;
             float btnY = phoneY + phoneH - btnH - 24f;
+            Rect nextBtnRect = new Rect(btnX, btnY, btnW, btnH);
 
-            string btnLabel = (currentMessageIndex >= totalSlides - 1) ? "PROCEED TO ATTIC ▶" : "NEXT ▶";
+            string btnLabel = (currentMessageIndex >= totalSlides - 1) ? "PROCEED TO ATTIC [ENTER] ▶" : "NEXT [ENTER / SPACE] ▶";
             var nextStyle = new GUIStyle(GUI.skin.button)
             {
                 fontSize = 14,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white }
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = Color.black }
             };
 
             GUI.backgroundColor = new Color(0.95f, 0.80f, 0.25f, 1f);
-            if (GUI.Button(new Rect(btnX, btnY, btnW, btnH), btnLabel, nextStyle))
+            if (GUI.Button(nextBtnRect, btnLabel, nextStyle))
             {
                 OnNextClicked();
+            }
+
+            Event e = Event.current;
+            if (e != null && e.type == EventType.MouseDown && e.button == 0)
+            {
+                if (nextBtnRect.Contains(e.mousePosition))
+                {
+                    OnNextClicked();
+                    e.Use();
+                }
             }
 
             GUI.backgroundColor = Color.white;

@@ -1,39 +1,37 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 using EscapeRoom.Core;
 using EscapeRoom.Player;
-using EscapeRoom.UI;
 
 namespace EscapeRoom.Stage2
 {
     /// <summary>
-    /// Trigger zone placed at the Storage Room exit corridor.
-    /// Stepping into the trigger concludes Stage 2, displays the victory/celebration modal,
-    /// stops the stage timer, plays the triumphant fanfare, and provides the CompleteStage2()
-    /// transition method ready for team integration.
+    /// Trigger volume located at the Stage 2 (Storage Room) exit blast door.
+    /// When the player enters after completing the prerequisites, ends Stage 2,
+    /// stops the timer, records completion metrics, unlocks Stage 3, and displays the Mission Debriefing modal.
+    /// Fully responsive to mouse clicks (GUI.Button + direct MouseDown) and keyboard hotkeys.
+    /// Hotkeys: [Enter]/[Space]/[C] = Continue, [R] = Replay Stage 2.
     /// </summary>
-    [DisallowMultipleComponent]
     [RequireComponent(typeof(Collider))]
+    [DisallowMultipleComponent]
     public class Stage2ExitTrigger : MonoBehaviour
     {
         private static Stage2ExitTrigger instance;
         public static Stage2ExitTrigger Instance => instance;
 
-        [Header("Next Stage Integration")]
-        [Tooltip("The name of the next stage scene (e.g. Stage3, Cellar) for future integration.")]
-        [SerializeField] private string nextSceneName = "";
+        public static bool IsStage2Complete => instance != null && instance.isStage2Complete;
 
         [Header("State")]
-        private static bool isStage2Complete = false;
-        private float completionTime = 0f;
-        private string completionRating = "S-RANK";
+        [SerializeField] private bool isStage2Complete = false;
+        [SerializeField] private float completionTime = 0f;
+        [SerializeField] private string completionRating = "S";
 
-        public static bool IsStage2Complete => isStage2Complete;
-        public float CompletionTime => completionTime;
-        public string CompletionRating => completionRating;
+        [Header("Scene Transition")]
+        [SerializeField] private string nextSceneName = "VaultCellar";
 
-        public static event Action OnStage2Completed;
+        public event Action OnStage2Completed;
 
         private void Awake()
         {
@@ -60,6 +58,55 @@ namespace EscapeRoom.Stage2
             }
         }
 
+        private void Update()
+        {
+            if (!isStage2Complete) return;
+
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            bool continuePressed = false;
+            bool replayPressed = false;
+
+            var kb = Keyboard.current;
+            if (kb != null)
+            {
+                if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame ||
+                    kb.spaceKey.wasPressedThisFrame || kb.cKey.wasPressedThisFrame)
+                {
+                    continuePressed = true;
+                }
+                else if (kb.rKey.wasPressedThisFrame)
+                {
+                    replayPressed = true;
+                }
+            }
+
+            if (!continuePressed && !replayPressed)
+            {
+                if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) ||
+                    Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.C))
+                {
+                    continuePressed = true;
+                }
+                else if (Input.GetKeyDown(KeyCode.R))
+                {
+                    replayPressed = true;
+                }
+            }
+
+            if (continuePressed)
+            {
+                Stage2Audio.Instance?.PlayButtonPress();
+                CompleteStage2();
+            }
+            else if (replayPressed)
+            {
+                Stage2Audio.Instance?.PlayButtonPress();
+                ReplayStage();
+            }
+        }
+
         private void OnTriggerEnter(Collider other)
         {
             if (isStage2Complete) return;
@@ -78,24 +125,29 @@ namespace EscapeRoom.Stage2
             isStage2Complete = true;
 
             // Complete final objective step
-            EscapeRoom.Core.ObjectiveManager.Instance?.CompleteFlag("STAGE2_COMPLETE");
-
-            // Stop Timer
-            var timer = Stage2Timer.Instance;
-            if (timer != null)
+            if (ObjectiveManager.Instance != null && ObjectiveManager.Instance.CurrentStep != null)
             {
-                timer.StopTimer();
-                completionTime = timer.TotalTimeSeconds - timer.RemainingTime;
+                ObjectiveManager.Instance.CompleteFlag(ObjectiveManager.Instance.CurrentStep.CompletionFlag);
+            }
+
+            // Stop stage timer and capture time
+            if (Stage2Timer.Instance != null)
+            {
+                completionTime = Stage2Timer.Instance.ElapsedTime;
+                Stage2Timer.Instance.StopTimer();
             }
             else
             {
-                completionTime = Time.timeSinceLevelLoad;
+                completionTime = 120f;
             }
 
-            // Calculate Rating
-            if (completionTime < 180f)
+            // Save progression: unlock Stage 3
+            GameProgress.SetStageUnlocked(3);
+
+            // Compute rating
+            if (completionTime < 90f)
                 completionRating = "EXEMPLARY [S-RANK]";
-            else if (completionTime < 360f)
+            else if (completionTime < 180f)
                 completionRating = "PROFICIENT [A-RANK]";
             else
                 completionRating = "QUALIFIED [B-RANK]";
@@ -106,15 +158,41 @@ namespace EscapeRoom.Stage2
             // Play completion audio
             Stage2Audio.Instance?.PlayStageComplete();
 
-            // Unlock mouse cursor for completion UI
+            // Unlock mouse cursor for completion UI and disable player controls
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
             var look = FindAnyObjectByType<PlayerLook>();
             if (look != null)
             {
                 look.SetCursorLock(false);
+                look.enabled = false;
+            }
+
+            var controller = FindAnyObjectByType<PlayerController>();
+            if (controller != null)
+            {
+                controller.enabled = false;
             }
 
             OnStage2Completed?.Invoke();
             Debug.Log($"<color=#5cb85c><b>[Stage2ExitTrigger]</b></color> STAGE 2 COMPLETE! Time: {completionTime:F1}s | Rating: {completionRating}");
+        }
+
+        public void ReplayStage()
+        {
+            Time.timeScale = 1f;
+
+            var look = FindAnyObjectByType<PlayerLook>();
+            if (look != null) look.enabled = true;
+            var controller = FindAnyObjectByType<PlayerController>();
+            if (controller != null) controller.enabled = true;
+
+            var active = SceneManager.GetActiveScene();
+            if (active.buildIndex >= 0)
+                SceneManager.LoadScene(active.buildIndex);
+            else
+                SceneManager.LoadScene(active.name);
         }
 
         /// <summary>
@@ -124,6 +202,12 @@ namespace EscapeRoom.Stage2
         public void CompleteStage2()
         {
             Debug.Log($"[Stage2ExitTrigger] CompleteStage2() invoked. Next scene target: '{nextSceneName}'.");
+            Time.timeScale = 1f;
+
+            var look = FindAnyObjectByType<PlayerLook>();
+            if (look != null) look.enabled = true;
+            var controller = FindAnyObjectByType<PlayerController>();
+            if (controller != null) controller.enabled = true;
 
             if (!string.IsNullOrEmpty(nextSceneName) && Application.CanStreamedLevelBeLoaded(nextSceneName))
             {
@@ -131,18 +215,23 @@ namespace EscapeRoom.Stage2
             }
             else
             {
-                // Standalone reload
-                var active = SceneManager.GetActiveScene();
-                if (active.buildIndex >= 0)
-                    SceneManager.LoadScene(active.buildIndex);
+                // If next scene not found, return to Main Menu
+                if (Application.CanStreamedLevelBeLoaded("MainMenu"))
+                {
+                    SceneManager.LoadScene("MainMenu");
+                }
                 else
-                    SceneManager.LoadScene(active.name);
+                {
+                    ReplayStage();
+                }
             }
         }
 
         private void OnGUI()
         {
             if (!isStage2Complete) return;
+
+            GUI.depth = -100;
 
             float winW = Mathf.Min(560f, Screen.width * 0.90f);
             float winH = Mathf.Min(420f, Screen.height * 0.90f);
@@ -227,6 +316,8 @@ namespace EscapeRoom.Stage2
             // Action Buttons
             float btnW = (winW - 60f) * 0.5f;
             float btnH = 44f;
+            Rect replayBtnRect = new Rect(winX + 24, curY, btnW, btnH);
+            Rect nextBtnRect = new Rect(winX + 36 + btnW, curY, btnW, btnH);
 
             var actionBtnStyle = new GUIStyle(GUI.skin.button)
             {
@@ -235,23 +326,40 @@ namespace EscapeRoom.Stage2
                 normal = { textColor = Color.white }
             };
 
-            if (GUI.Button(new Rect(winX + 24, curY, btnW, btnH), "REPLAY STAGE 2", actionBtnStyle))
+            GUI.backgroundColor = new Color(0.20f, 0.60f, 0.80f);
+            if (GUI.Button(replayBtnRect, "REPLAY STAGE 2 [R]", actionBtnStyle))
             {
                 Stage2Audio.Instance?.PlayButtonPress();
-                var active = SceneManager.GetActiveScene();
-                if (active.buildIndex >= 0)
-                    SceneManager.LoadScene(active.buildIndex);
-                else
-                    SceneManager.LoadScene(active.name);
+                ReplayStage();
             }
 
-            string nextLabel = string.IsNullOrEmpty(nextSceneName) ? "CONTINUE [STAGE COMPLETE]" : "CONTINUE TO NEXT STAGE";
-            if (GUI.Button(new Rect(winX + 36 + btnW, curY, btnW, btnH), nextLabel, actionBtnStyle))
+            GUI.backgroundColor = new Color(0.25f, 0.85f, 0.45f);
+            string nextLabel = string.IsNullOrEmpty(nextSceneName) ? "CONTINUE [ENTER / C]" : "CONTINUE [ENTER / C]";
+            if (GUI.Button(nextBtnRect, nextLabel, actionBtnStyle))
             {
                 Stage2Audio.Instance?.PlayButtonPress();
                 CompleteStage2();
             }
 
+            // Direct Mouse Click Fallback
+            Event e = Event.current;
+            if (e != null && e.type == EventType.MouseDown && e.button == 0)
+            {
+                if (replayBtnRect.Contains(e.mousePosition))
+                {
+                    Stage2Audio.Instance?.PlayButtonPress();
+                    ReplayStage();
+                    e.Use();
+                }
+                else if (nextBtnRect.Contains(e.mousePosition))
+                {
+                    Stage2Audio.Instance?.PlayButtonPress();
+                    CompleteStage2();
+                    e.Use();
+                }
+            }
+
+            GUI.backgroundColor = Color.white;
             GUI.color = oldColor;
         }
     }

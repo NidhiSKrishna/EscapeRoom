@@ -212,6 +212,12 @@ namespace EscapeRoom.UI
                 StageTimer.Instance.OnTimerExpired     -= HandleTimerExpired;
                 StageTimer.Instance.OnTimerExpired     += HandleTimerExpired;
             }
+
+            // Auto-activate Cipher if gameplay is already in progress without briefing modal
+            if (!AtticBriefingUI.IsBriefingOpen && !PhoneIntroUI.IsIntroOpen && !isActive)
+            {
+                Activate();
+            }
         }
 
         private void Update()
@@ -378,6 +384,7 @@ namespace EscapeRoom.UI
             if (AtticBriefingUI.IsBriefingOpen) return;
             if (PhoneIntroUI.IsIntroOpen)        return;
             if (PauseManager.Instance != null && PauseManager.Instance.IsPaused) return;
+            if (EscapeUI.Instance != null && EscapeUI.Instance.IsOpen) return;
 
             if (!isActive) return;
 
@@ -509,6 +516,7 @@ namespace EscapeRoom.UI
             if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return;
             if (ClueInteractable.IsAnyClueOpen) return;
             if (SymbolClueInteractable.IsAnyClueOpen) return;
+            if (EscapeUI.Instance != null && EscapeUI.Instance.IsOpen) return;
 
             if (!stylesBuilt) BuildStyles();
 

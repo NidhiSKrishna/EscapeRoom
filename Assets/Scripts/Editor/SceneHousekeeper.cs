@@ -173,6 +173,7 @@ namespace EscapeRoom.Editor
             {
                 new EditorBuildSettingsScene(MainMenuScenePath, true),
                 new EditorBuildSettingsScene(MainScenePath, true),
+                new EditorBuildSettingsScene("Assets/Scenes/StorageRoom.unity", true),
                 new EditorBuildSettingsScene(SampleScenePath, false)
             };
 

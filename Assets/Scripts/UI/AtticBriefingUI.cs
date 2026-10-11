@@ -31,7 +31,8 @@ namespace EscapeRoom.UI
             "CONTROLS\n" +
             "WASD - Move\n" +
             "Mouse - Look\n" +
-            "F - Interact & Search\n" +
+            "E - Interact\n" +
+            "F - Flashlight\n" +
             "T - Objectives\n" +
             "ESC - Pause / close current panel";
 
@@ -79,7 +80,13 @@ namespace EscapeRoom.UI
             if (!isOpen) return;
 
             var keyboard = Keyboard.current;
-            if (keyboard != null && (keyboard.enterKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame))
+            if (keyboard != null && (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame))
+            {
+                OnBeginClicked();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space))
             {
                 OnBeginClicked();
             }
@@ -141,6 +148,8 @@ namespace EscapeRoom.UI
         {
             if (!isOpen) return;
 
+            GUI.depth = -100;
+
             // Full screen dim backdrop
             Color oldColor = GUI.color;
             GUI.color = new Color(0.04f, 0.05f, 0.08f, 0.92f);
@@ -171,7 +180,7 @@ namespace EscapeRoom.UI
                 fontSize = 24,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = Color.white }
+                normal = { textColor = new Color(0.98f, 0.85f, 0.35f) }
             };
             GUI.Label(new Rect(cardX + 20, cardY + 20, cardWidth - 40, 36), briefingTitle, titleStyle);
 
@@ -186,7 +195,7 @@ namespace EscapeRoom.UI
                 fontSize = 15,
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
-                normal = { textColor = Color.white }
+                normal = { textColor = new Color(0.90f, 0.92f, 0.95f) }
             };
             GUI.Label(new Rect(cardX + 30, cardY + 75, cardWidth - 60, 70), briefingBody, bodyStyle);
 
@@ -204,7 +213,7 @@ namespace EscapeRoom.UI
             {
                 fontSize = 13,
                 alignment = TextAnchor.UpperLeft,
-                normal = { textColor = Color.white }
+                normal = { textColor = new Color(0.80f, 0.88f, 0.95f) }
             };
             GUI.Label(new Rect(boxX + 20, boxY + 12, boxW - 40, boxH - 24), controlsText, controlsStyle);
 
@@ -218,13 +227,24 @@ namespace EscapeRoom.UI
             {
                 fontSize = 16,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white }
+                normal = { textColor = Color.black }
             };
 
             GUI.backgroundColor = new Color(0.98f, 0.82f, 0.25f, 1f);
-            if (GUI.Button(new Rect(btnX, btnY, btnW, btnH), "BEGIN", btnStyle))
+            Rect beginRect = new Rect(btnX, btnY, btnW, btnH);
+            if (GUI.Button(beginRect, "BEGIN [ENTER / SPACE]", btnStyle))
             {
                 OnBeginClicked();
+            }
+
+            Event e = Event.current;
+            if (e != null && e.type == EventType.MouseDown && e.button == 0)
+            {
+                if (beginRect.Contains(e.mousePosition))
+                {
+                    OnBeginClicked();
+                    e.Use();
+                }
             }
 
             GUI.backgroundColor = Color.white;

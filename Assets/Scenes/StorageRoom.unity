@@ -9152,7 +9152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dda899cd5ef6a4141b491d71faa48eaf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EscapeRoom.Stage2.Stage2Timer
-  totalTimeSeconds: 540
+  totalTimeSeconds: 270
   remainingTime: 0
   isRunning: 1
   isExpired: 0
@@ -26735,7 +26735,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 9f0f5239f97432443ab85cc66b9e3bea, type: 2}
+  - {fileID: 2100000, guid: ae715757cc4490348907f784e79795c3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

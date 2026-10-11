@@ -80,9 +80,10 @@ namespace EscapeRoom.Stage2
         [Header("State")]
         [SerializeField] private bool isOpen = false;
         [SerializeField] private int currentCardIndex = 0;
+        private static bool justClosedThisFrame = false;
 
         public bool IsOpen => isOpen;
-        public static bool IsIntroOpen => instance != null && instance.isOpen;
+        public static bool IsIntroOpen => (instance != null && instance.isOpen) || justClosedThisFrame;
 
         private void Awake()
         {
@@ -209,7 +210,14 @@ namespace EscapeRoom.Stage2
         private void FinishIntro()
         {
             isOpen = false;
+            justClosedThisFrame = true;
             Time.timeScale = 1f;
+
+            // In case PauseManager was triggered, force resume
+            if (PauseManager.Instance != null && PauseManager.Instance.IsPaused)
+            {
+                PauseManager.Instance.ResumeGame();
+            }
 
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
@@ -228,6 +236,19 @@ namespace EscapeRoom.Stage2
 
             Stage2Audio.Instance?.PlayCorrectAnswer();
             Debug.Log("<color=#5cb85c>[Stage2IntroUI]</color> Intro complete. Active gameplay engaged, cursor locked, objectives activated.");
+        }
+
+        private void LateUpdate()
+        {
+            if (justClosedThisFrame)
+            {
+                // In case PauseManager processed Escape during this frame after FinishIntro()
+                if (PauseManager.Instance != null && PauseManager.Instance.IsPaused)
+                {
+                    PauseManager.Instance.ResumeGame();
+                }
+                justClosedThisFrame = false;
+            }
         }
 
         private void OnGUI()

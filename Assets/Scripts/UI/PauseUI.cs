@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using EscapeRoom.Core;
 
 namespace EscapeRoom.UI
@@ -6,6 +7,8 @@ namespace EscapeRoom.UI
     /// <summary>
     /// Screen-space Pause Menu UI rendering RESUME, RESTART, and MAIN MENU options.
     /// Operates during Time.timeScale = 0f.
+    /// Fully responsive to mouse clicks (GUI.Button + direct MouseDown) and keyboard hotkeys.
+    /// Hotkeys: [Esc]/[Space] = Resume, [R] = Restart, [M] = Main Menu.
     /// </summary>
     [DisallowMultipleComponent]
     public class PauseUI : MonoBehaviour
@@ -36,9 +39,57 @@ namespace EscapeRoom.UI
             }
         }
 
+        private void Update()
+        {
+            if (!isOpen) return;
+
+            // Ensure cursor is visible while paused
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            bool restartPressed = false;
+            bool menuPressed = false;
+
+            var kb = Keyboard.current;
+            if (kb != null)
+            {
+                if (kb.rKey.wasPressedThisFrame)
+                {
+                    restartPressed = true;
+                }
+                else if (kb.mKey.wasPressedThisFrame)
+                {
+                    menuPressed = true;
+                }
+            }
+
+            if (!restartPressed && !menuPressed)
+            {
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    restartPressed = true;
+                }
+                else if (Input.GetKeyDown(KeyCode.M))
+                {
+                    menuPressed = true;
+                }
+            }
+
+            if (restartPressed)
+            {
+                OnRestartClicked();
+            }
+            else if (menuPressed)
+            {
+                OnMainMenuClicked();
+            }
+        }
+
         public void ShowPauseMenu()
         {
             isOpen = true;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
         }
 
         public void HidePauseMenu()
@@ -83,13 +134,15 @@ namespace EscapeRoom.UI
         {
             if (!isOpen) return;
 
+            GUI.depth = -100;
+
             // Translucent dark background overlay
             Color oldColor = GUI.color;
             GUI.color = new Color(0.04f, 0.05f, 0.08f, 0.75f);
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
 
-            float panelWidth = 320f;
-            float panelHeight = 330f;
+            float panelWidth = 340f;
+            float panelHeight = 290f;
             float panelX = (Screen.width - panelWidth) * 0.5f;
             float panelY = (Screen.height - panelHeight) * 0.5f;
 
@@ -114,58 +167,69 @@ namespace EscapeRoom.UI
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = new Color(0.95f, 0.95f, 0.95f) }
             };
-            GUI.Label(new Rect(panelX, panelY + 24f, panelWidth, 36), "PAUSED", titleStyle);
+            GUI.Label(new Rect(panelX, panelY + 22f, panelWidth, 36), "PAUSED", titleStyle);
 
             // Buttons
-            float btnW = 200f;
-            float btnH = 40f;
+            float btnW = 230f;
+            float btnH = 42f;
             float btnX = panelX + (panelWidth - btnW) * 0.5f;
-            float startY = panelY + 80f;
-            float spacing = 50f;
+            float startY = panelY + 76f;
+            float spacing = 52f;
+
+            Rect resumeRect = new Rect(btnX, startY, btnW, btnH);
+            Rect restartRect = new Rect(btnX, startY + spacing, btnW, btnH);
+            Rect menuRect = new Rect(btnX, startY + spacing * 2f, btnW, btnH);
 
             GUIStyle btnStyle = new GUIStyle(GUI.skin.button)
             {
-                fontSize = 15,
+                fontSize = 14,
                 fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = Color.white }
             };
+
+            GUI.color = Color.white;
 
             // RESUME
             GUI.backgroundColor = new Color(0.20f, 0.65f, 0.35f);
-            if (GUI.Button(new Rect(btnX, startY, btnW, btnH), "RESUME", btnStyle))
+            if (GUI.Button(resumeRect, "RESUME [ESC]", btnStyle))
             {
                 OnResumeClicked();
             }
 
             // RESTART
             GUI.backgroundColor = new Color(0.35f, 0.40f, 0.50f);
-            if (GUI.Button(new Rect(btnX, startY + spacing, btnW, btnH), "RESTART", btnStyle))
+            if (GUI.Button(restartRect, "RESTART [R]", btnStyle))
             {
                 OnRestartClicked();
             }
 
-            // INTERACTION KEY CONFIG
-            string currentKey = InputConfig.InteractKeyName;
-            GUI.backgroundColor = new Color(0.20f, 0.45f, 0.70f);
-            if (GUI.Button(new Rect(btnX, startY + spacing * 2f, btnW, btnH), $"INTERACT KEY: [ {currentKey} ]", btnStyle))
-            {
-                // Toggle between F, E, and Space
-                if (InputConfig.Instance != null)
-                {
-                    if (InputConfig.CurrentInteractKey == UnityEngine.InputSystem.Key.F)
-                        InputConfig.Instance.SetInteractKey(UnityEngine.InputSystem.Key.E);
-                    else if (InputConfig.CurrentInteractKey == UnityEngine.InputSystem.Key.E)
-                        InputConfig.Instance.SetInteractKey(UnityEngine.InputSystem.Key.Space);
-                    else
-                        InputConfig.Instance.SetInteractKey(UnityEngine.InputSystem.Key.F);
-                }
-            }
-
             // MAIN MENU
             GUI.backgroundColor = new Color(0.30f, 0.32f, 0.38f);
-            if (GUI.Button(new Rect(btnX, startY + spacing * 3f, btnW, btnH), "MAIN MENU", btnStyle))
+            if (GUI.Button(menuRect, "MAIN MENU [M]", btnStyle))
             {
                 OnMainMenuClicked();
+            }
+
+            // Direct Mouse Click Fallback
+            Event e = Event.current;
+            if (e != null && e.type == EventType.MouseDown && e.button == 0)
+            {
+                if (resumeRect.Contains(e.mousePosition))
+                {
+                    OnResumeClicked();
+                    e.Use();
+                }
+                else if (restartRect.Contains(e.mousePosition))
+                {
+                    OnRestartClicked();
+                    e.Use();
+                }
+                else if (menuRect.Contains(e.mousePosition))
+                {
+                    OnMainMenuClicked();
+                    e.Use();
+                }
             }
 
             GUI.backgroundColor = Color.white;

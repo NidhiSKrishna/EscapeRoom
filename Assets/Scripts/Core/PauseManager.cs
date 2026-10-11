@@ -71,39 +71,45 @@ namespace EscapeRoom.Core
                 return;
             }
 
-            // Priority 2b: Stage 2 symbol clue is open -> let it close
-            if (EscapeRoom.Interaction.SymbolClueInteractable.IsAnyClueOpen)
+            // Priority 2b: Stage 2 Modals are open -> close modal, do not pause
+            if (EscapeRoom.Stage2.Stage2StorageContainer.IsKeypadOpen)
+            {
+                EscapeRoom.Stage2.Stage2StorageContainer.Instance?.CloseKeypad();
+                return;
+            }
+
+            if (EscapeRoom.Stage2.Stage2PatternTerminal.IsTerminalOpen)
+            {
+                EscapeRoom.Stage2.Stage2PatternTerminal.Instance?.CloseTerminal();
+                return;
+            }
+
+            if (EscapeRoom.Stage2.Stage2CipherAdapter.IsDocumentOpen)
+            {
+                EscapeRoom.Stage2.Stage2CipherAdapter.Instance?.CloseDocument();
+                return;
+            }
+
+            // Priority 3: Briefing or Intro is open -> do not pause or bypass with Escape
+            if (AtticBriefingUI.IsBriefingOpen || PhoneIntroUI.IsIntroOpen || EscapeRoom.Stage2.Stage2IntroUI.IsIntroOpen)
             {
                 return;
             }
 
-            // Priority 3: Exit Code Display panel is open -> close it, do not pause
-            if (ExitCodeDisplayUI.IsDisplayOpen && ExitCodeDisplayUI.Instance != null)
-            {
-                ExitCodeDisplayUI.Instance.CloseDisplay();
-                return;
-            }
-
-            // Priority 4: Briefing or Intro is open -> do not pause or bypass with Escape
-            if (AtticBriefingUI.IsBriefingOpen || PhoneIntroUI.IsIntroOpen)
-            {
-                return;
-            }
-
-            // Priority 5: Expanded Objective view is open -> close it, do not pause
+            // Priority 4: Expanded Objective view is open -> close it, do not pause
             if (ObjectiveHUD.IsExpandedViewOpen && ObjectiveHUD.Instance != null)
             {
                 ObjectiveHUD.Instance.CloseExpandedView();
                 return;
             }
 
-            // Priority 6: Game already completed (escaped) -> do not pause
+            // Priority 5: Game already completed (escaped) -> do not pause
             if (GameManager.Instance != null && GameManager.Instance.HasEscaped)
             {
                 return;
             }
 
-            // Priority 7: Toggle pause state
+            // Priority 6: Toggle pause state
             TogglePause();
         }
 

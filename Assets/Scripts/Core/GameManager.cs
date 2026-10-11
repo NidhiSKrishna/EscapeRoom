@@ -60,6 +60,9 @@ namespace EscapeRoom.Core
             Debug.Log("<color=#5cb85c><b>[GameManager]</b></color> Escape Completed! Player reached the exit.");
             FeedbackHUD.ShowMessage("ESCAPE SUCCESSFUL! You solved the escape room.", new Color(0.35f, 0.95f, 0.95f));
 
+            // Unlock Stage 2 progress
+            GameProgress.SetStageUnlocked(2);
+
             OnEscapeCompleted?.Invoke();
             OnGameplayStateChanged?.Invoke(false);
 
