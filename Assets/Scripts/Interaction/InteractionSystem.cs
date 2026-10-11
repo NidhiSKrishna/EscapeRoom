@@ -211,6 +211,8 @@ namespace EscapeRoom.Interaction
         public bool ShouldSuppressInteraction()
         {
             if (KeypadUI.Instance != null && KeypadUI.Instance.IsOpen) return true;
+            if (EscapeRoom.Stage3.Puzzles.SymbolMappingPuzzle.Instance != null && EscapeRoom.Stage3.Puzzles.SymbolMappingPuzzle.Instance.IsUIOpen) return true;
+            if (EscapeRoom.Stage3.UI.MonitorDisplayUI.IsAnyMonitorOpen) return true;
             if (ClueInteractable.IsAnyClueOpen) return true;
             if (EscapeRoom.Core.PauseManager.Instance != null && EscapeRoom.Core.PauseManager.Instance.IsPaused) return true;
             if (EscapeRoom.Core.GameManager.Instance != null && EscapeRoom.Core.GameManager.Instance.HasEscaped) return true;

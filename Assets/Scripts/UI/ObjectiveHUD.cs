@@ -251,11 +251,6 @@ namespace EscapeRoom.UI
             GUI.color = bgColor;
             GUI.Box(new Rect(hudX + 4, hudY + 4, hudW - 8, hudH - 8), GUIContent.none);
 
-            int currentStepNum = om.CurrentStepIndex + 1;
-            int totalSteps = om.TotalSteps;
-            string stepInstruction = om.CurrentStep != null ? om.CurrentStep.Instruction : "Escape the facility.";
-
-            // Step Header label: STEP X / 7
             GUI.color = Color.white;
             var headerStyle = new GUIStyle(GUI.skin.label)
             {
@@ -264,9 +259,7 @@ namespace EscapeRoom.UI
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = new Color(0.98f, 0.82f, 0.25f) }
             };
-            GUI.Label(new Rect(hudX + 10, hudY + 6, hudW - 20, 16), $"STEP {currentStepNum} / {totalSteps}", headerStyle);
 
-            // Instruction label
             var instrStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 13,
@@ -275,7 +268,38 @@ namespace EscapeRoom.UI
                 wordWrap = true,
                 normal = { textColor = new Color(0.95f, 0.96f, 0.98f) }
             };
-            GUI.Label(new Rect(hudX + 10, hudY + 24, hudW - 20, 24), stepInstruction, instrStyle);
+
+            if (om.IsFinalEscaped)
+            {
+                headerStyle.normal.textColor = new Color(0.40f, 0.95f, 0.45f);
+                GUI.Label(new Rect(hudX + 10, hudY + 6, hudW - 20, 16), "STAGE 3 COMPLETE", headerStyle);
+                instrStyle.normal.textColor = new Color(0.40f, 0.95f, 0.45f);
+                string escapeMsg = !string.IsNullOrEmpty(om.FinalEscapedMessage)
+                    ? om.FinalEscapedMessage
+                    : "STAGE 3 COMPLETE — FACILITY ESCAPED!";
+                GUI.Label(new Rect(hudX + 10, hudY + 24, hudW - 20, 24), escapeMsg, instrStyle);
+            }
+            else
+            {
+                int totalSteps = om.TotalSteps;
+                int currentStepNum = Mathf.Clamp(om.CurrentStepIndex + 1, 1, Mathf.Max(1, totalSteps));
+                string stepInstruction;
+
+                if (om.IsAllCompleted)
+                {
+                    currentStepNum = totalSteps;
+                    stepInstruction = !string.IsNullOrEmpty(om.CompletionInstruction)
+                        ? om.CompletionInstruction
+                        : "All security systems cleared! Exit unlocked.";
+                }
+                else
+                {
+                    stepInstruction = om.CurrentStep != null ? om.CurrentStep.Instruction : "Explore your surroundings.";
+                }
+
+                GUI.Label(new Rect(hudX + 10, hudY + 6, hudW - 20, 16), $"STEP {currentStepNum} / {totalSteps}", headerStyle);
+                GUI.Label(new Rect(hudX + 10, hudY + 24, hudW - 20, 24), stepInstruction, instrStyle);
+            }
 
             GUI.color = oldColor;
         }
@@ -351,7 +375,7 @@ namespace EscapeRoom.UI
                     string prefix;
                     Color textColor;
 
-                    if (i < currentIdx)
+                    if (om.IsAllCompleted || i < currentIdx)
                     {
                         prefix = "✓  ";
                         textColor = new Color(0.40f, 0.90f, 0.45f); // Completed (Green)
@@ -370,7 +394,7 @@ namespace EscapeRoom.UI
                     var rowStyle = new GUIStyle(GUI.skin.label)
                     {
                         fontSize = 13,
-                        fontStyle = (i == currentIdx) ? FontStyle.Bold : FontStyle.Normal,
+                        fontStyle = (i == currentIdx && !om.IsAllCompleted) ? FontStyle.Bold : FontStyle.Normal,
                         alignment = TextAnchor.MiddleLeft,
                         wordWrap = true,
                         normal = { textColor = textColor }

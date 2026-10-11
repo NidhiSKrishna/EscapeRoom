@@ -35,7 +35,7 @@ namespace EscapeRoom.Puzzle
         [SerializeField] private float animationDuration = 1.4f;
 
         [Header("Prompts")]
-        [SerializeField] private string lockedPrompt = "Exit Door (Locked by Keypad)";
+        [SerializeField] private string lockedPrompt = "Exit Door (Locked)";
         [SerializeField] private string unlockPrompt = "Press E to open Exit Door";
         [SerializeField] private string openedPrompt = "Exit Door (Open)";
 
@@ -106,8 +106,8 @@ namespace EscapeRoom.Puzzle
 
             if (isLocked)
             {
-                Debug.Log("[DoorController] Exit door is locked. Security keypad authorization required.");
-                FeedbackHUD.ShowMessage("Exit door is locked! Authorize via Keypad terminal.", new Color(0.95f, 0.40f, 0.40f));
+                Debug.Log("[DoorController] Exit door is locked. Clear all security systems to unlock.");
+                FeedbackHUD.ShowMessage("Exit door is locked! Clear all security systems to unlock.", new Color(0.95f, 0.40f, 0.40f));
                 return;
             }
 
@@ -160,7 +160,7 @@ namespace EscapeRoom.Puzzle
             }
 
             Debug.Log($"<color=#5cb85c><b>[DoorController]</b></color> '{gameObject.name}' opening...");
-            FeedbackHUD.ShowMessage("Exit Door Open - Escape Successful!", new Color(0.35f, 0.95f, 0.95f));
+            FeedbackHUD.ShowMessage("Exit Door Opened - Proceed to Exit!", new Color(0.35f, 0.95f, 0.95f));
             onDoorOpened?.Invoke();
         }
 

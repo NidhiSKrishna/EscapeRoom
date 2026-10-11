@@ -22,10 +22,15 @@ namespace EscapeRoom.Core
         [Header("Runtime State")]
         [SerializeField] private int currentStepIndex = 0;
         [SerializeField] private bool isSystemActive = true;
+        [SerializeField] private bool isAllCompleted = false;
+        [SerializeField] private bool isFinalEscaped = false;
+        [SerializeField] private string completionInstruction = "All security systems cleared! Exit unlocked.";
+        [SerializeField] private string finalEscapedMessage = "STAGE 3 COMPLETE — FACILITY ESCAPED!";
 
         public event Action<int, ObjectiveStep> OnStepChanged;
         public event Action<ObjectiveStep> OnObjectiveCompleted;
         public event Action OnAllObjectivesCompleted;
+        public event Action OnFinalEscaped;
 
         public ObjectiveStep[] Steps => steps;
         public int CurrentStepIndex => currentStepIndex;
@@ -34,6 +39,21 @@ namespace EscapeRoom.Core
         {
             get => isSystemActive;
             set => isSystemActive = value;
+        }
+
+        public bool IsAllCompleted => isAllCompleted || (steps != null && steps.Length > 0 && currentStepIndex >= steps.Length);
+        public bool IsFinalEscaped => isFinalEscaped;
+
+        public string CompletionInstruction
+        {
+            get => completionInstruction;
+            set => completionInstruction = value;
+        }
+
+        public string FinalEscapedMessage
+        {
+            get => finalEscapedMessage;
+            set => finalEscapedMessage = value;
         }
 
         public ObjectiveStep CurrentStep
@@ -47,8 +67,6 @@ namespace EscapeRoom.Core
                 return null;
             }
         }
-
-        public bool IsAllCompleted => steps != null && currentStepIndex >= steps.Length;
 
         private void Awake()
         {
@@ -77,6 +95,8 @@ namespace EscapeRoom.Core
         /// <summary>
         /// Attempts to complete the current objective step using the provided completion flag.
         /// Only advances if the flag matches the current step's completionFlag.
+        /// When the final step is completed, it stays at the final numbered step (e.g. 4/4)
+        /// and marks completion rather than rolling over to an invalid step number.
         /// </summary>
         public bool CompleteFlag(string flag)
         {
@@ -92,12 +112,18 @@ namespace EscapeRoom.Core
                 Debug.Log($"<color=#5cb85c><b>[ObjectiveManager]</b></color> Objective Completed: Step {currentStepIndex + 1}/{TotalSteps} ('{current.Instruction}') [Flag: {flag}]");
 
                 OnObjectiveCompleted?.Invoke(current);
-                currentStepIndex++;
 
-                if (IsAllCompleted)
+                // If completing the final step in the sequence:
+                if (currentStepIndex + 1 >= TotalSteps)
                 {
+                    isAllCompleted = true;
+                    // Do not increment past TotalSteps - 1 so the counter remains at 4/4
                     Debug.Log("<b><color=#5cb85c>[ObjectiveManager] All Objectives Successfully Completed!</color></b>");
                     OnAllObjectivesCompleted?.Invoke();
+                }
+                else
+                {
+                    currentStepIndex++;
                 }
 
                 NotifyStepChanged();
@@ -107,16 +133,31 @@ namespace EscapeRoom.Core
             return false;
         }
 
+        public void SetFinalEscaped(string message = null)
+        {
+            isFinalEscaped = true;
+            if (!string.IsNullOrEmpty(message))
+            {
+                finalEscapedMessage = message;
+            }
+            OnFinalEscaped?.Invoke();
+            NotifyStepChanged();
+        }
+
         public void SetSteps(ObjectiveStep[] newSteps)
         {
             steps = newSteps;
             currentStepIndex = 0;
+            isAllCompleted = false;
+            isFinalEscaped = false;
             NotifyStepChanged();
         }
 
         public void ResetObjectives()
         {
             currentStepIndex = 0;
+            isAllCompleted = false;
+            isFinalEscaped = false;
             isSystemActive = true;
             Debug.Log("[ObjectiveManager] Objectives reset to Step 1.");
             NotifyStepChanged();

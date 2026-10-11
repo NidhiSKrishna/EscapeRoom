@@ -55,7 +55,10 @@ namespace EscapeRoom.UI
                 // Auto-create runtime instance if missing
                 var go = new GameObject("FeedbackHUD");
                 instance = go.AddComponent<FeedbackHUD>();
-                DontDestroyOnLoad(go);
+                if (Application.isPlaying)
+                {
+                    DontDestroyOnLoad(go);
+                }
             }
 
             instance.currentMessage = message;
